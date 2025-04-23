@@ -40,65 +40,61 @@ Outputs:			None
 Description:	Creates and registers the settings panel with LibAddonMenu.
 ------------------------------------------------------------------------------------------------]]--
 function SDM:CreateSettingsPanel()
+	local Parent = self:GetParent()
 	local panelData = {
 		type = "panel",
 		name = "Static's Social Features",
 		displayName = "Static's Social Features",
-		author = self:GetParent().author,
+		author = Parent.author,
 		--website = "https://www.esoui.com/downloads/info3836-StaticsRecruiter.html",
 		feedback = "https://www.esoui.com/portal.php?&uid=6533",
 		slashCommand = "/ssfmenu",
 		registerForRefresh = true,
 		registerForDefaults = true,
-		version = self:GetParent().addonVersion,
+		version = Parent.addonVersion,
 	}
 
   local optionsData = {}
 	local i = 1
 
-	optionsData[i] = {
-		type = "header",
-		name = "Character Force Offline",
-	}
+	local controls = {}
+	local k = 1
 
-	i = i + 1
-	optionsData[i] = {
+	controls[k] = {
 		type = "description",
-    text = "If enabled, forces your player status to OFFLINE for the specific characters. Note that if you were listed as online before logging into these characters, you will still show a message to your friends.",
+    text = "If enabled, forces your player status for the specific characters. Note that if you were listed as online/away/DND before logging into these characters, you will still show a message to your friends.",
     width = "full",
 	}
 
-  --i = i + 1
-	--[[for k = 1, #self:GetParent().ZM.Data do
-		local v = self:GetParent().ZM.Data[k]
-		optionsData[i] = {
-			type = "checkbox",
-			name = v.name,
-			getFunc = function() return self:GetParent().Zones[v.zoneID] end,
-			setFunc = function(var) self:GetParent().Zones[v.zoneID] = var self:GetParent().SavedVars.Profiles[self:GetParent().SavedVars.selectedProfile].Zones[v.zoneID] = var end,
-			width = "half",
-			default = self:GetParent().Defaults.zoneCheckbox,
-			disabled = function()
-				local disabled = false
-				local autoStarted = self:GetParent().autoStarted
-				local isCollectible = false
-				local collectibleID = GetCollectibleIdForZone(GetZoneIndex(v.zoneID))
-				local isUnlocked = false
-				if collectibleID ~= 0 then
-					isCollectible = true
-					isUnlocked = IsCollectibleUnlocked(GetCollectibleIdForZone(GetZoneIndex(v.zoneID)))
-					if not isUnlocked then
-						self:GetParent().Zones[v.zoneID] = false
-					end
-				end
-				if autoStarted or (isCollectible and not isUnlocked) then
-					disabled = true
-				end
-				return disabled
-			end, -- or boolean (optional)
-		}
-		i = i + 1
-	end]]--
+	local choicesValues = {
+		Parent.PlayerStatus.disabled,
+		Parent.PlayerStatus.online,
+		Parent.PlayerStatus.away,
+		Parent.PlayerStatus.dnd,
+		Parent.PlayerStatus.offline,
+	}
+
+	for key, value in ipairs(Parent.SavedVars.Characters) do
+		k = k + 1
+		controls[k] = {
+			type = "dropdown",
+			name = value.name, -- or string id or function returning a string
+			choices = {"Disabled", "Online", "Away", "Do Not Disturb", "Offline"},
+			choicesValues = choicesValues, -- if specified, these values will get passed to setFunc instead (optional)
+			getFunc = function() return value.charOverride end, -- if multiSelect is true the getFunc must return a table
+			setFunc = function(var) value.charOverride = var end, -- if multiSelect is true the setFunc's var must be a table
+			width = "half", -- or "half" (optional)
+			scrollable = false, -- boolean or number, if set the dropdown will feature a scroll bar if there are a large amount of choices and limit the visible lines to the specified number or 10 if true is used (optional)
+			default = Parent.Defaults.charOverride, -- default value or function that returns the default value (optional)
+			multiSelect = false, -- boolean or function returning a boolean. If set to true you can select multiple entries at the list (optional)
+	}
+	end
+
+	optionsData[i] = {
+		type = "submenu",
+		name = "Force Character Status",
+		controls = controls,
+	}
 
   i = i + 1
   optionsData[i] = {
@@ -110,40 +106,40 @@ function SDM:CreateSettingsPanel()
 	optionsData[i] = {
 		type = "checkbox",
     name = "Chat Messages Enabled",
-    getFunc = function() return self:GetParent().SavedVars.chatMsgEnabled end,
-    setFunc = function(value) self:GetParent().SavedVars.chatMsgEnabled = value end,
+    getFunc = function() return Parent.SavedVars.chatMsgEnabled end,
+    setFunc = function(value) Parent.SavedVars.chatMsgEnabled = value end,
     tooltip = "Disables ALL chat messages from this add-on.",
     width = "half",
-		default = self:GetParent().Defaults.chatMsgEnabled,
+		default = Parent.Defaults.chatMsgEnabled,
 	}
 
 	i = i + 1
 	optionsData[i] = {
 		type = "checkbox",
     name = "Debugging Mode",
-    getFunc = function() return self:GetParent().SavedVars.debugMode end,
-    setFunc = function(value) self:GetParent().SavedVars.debugMode = value end,
+    getFunc = function() return Parent.SavedVars.debugMode end,
+    setFunc = function(value) Parent.SavedVars.debugMode = value end,
     tooltip = "Turns on extra messages for the purposes of debugging. Not intended for normal use.",
     width = "half",
-		default = self:GetParent().Defaults.debugMode,
+		default = Parent.Defaults.debugMode,
 	}
 
 	local function LAMPanelCreated(panel)
-		if panel ~= self:GetParent().LAMSettingsPanel then return end
-		self:GetParent().LAMReady = true
-		self:GetParent().Controls = {}
+		if panel ~= Parent.LAMSettingsPanel then return end
+		Parent.LAMReady = true
+		Parent.Controls = {}
 		self:Update()
 	end
 
 	local function LAMPanelOpened(panel)
-		if panel ~= self:GetParent().LAMSettingsPanel then return end
+		if panel ~= Parent.LAMSettingsPanel then return end
 		self:Update()
 	end
 
-	self:GetParent().LAMSettingsPanel = LAM2:RegisterAddonPanel(self:GetParent().addonName .. "_LAM", panelData)
+	Parent.LAMSettingsPanel = LAM2:RegisterAddonPanel(Parent.addonName .. "_LAM", panelData)
 	CM:RegisterCallback("LAM-PanelControlsCreated", LAMPanelCreated)
 	CM:RegisterCallback("LAM-PanelOpened", LAMPanelOpened)
-	LAM2:RegisterOptionControls(self:GetParent().addonName .. "_LAM", optionsData)
+	LAM2:RegisterOptionControls(Parent.addonName .. "_LAM", optionsData)
 end
 
 
@@ -154,8 +150,8 @@ Outputs:			None
 Description:	Updates the settings panel in LibAddonMenu.
 ------------------------------------------------------------------------------------------------]]--
 function SDM:Update()
-	local parent = self:GetParent()
-	if not parent.LAMReady then return end
+	local Parent = self:GetParent()
+	if not Parent.LAMReady then return end
 end
 
 

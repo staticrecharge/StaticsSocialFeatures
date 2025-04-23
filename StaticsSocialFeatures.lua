@@ -37,6 +37,7 @@ function SSF:Initialize()
 	self.chatTextColor = "|cFFFFFF"
 	self.chatSuffix = "|r"
 	self.PlayerStatus = {
+		disabled = 5,
 		online = PLAYER_STATUS_ONLINE,
 		away = PLAYER_STATUS_AWAY,
 		dnd = PLAYER_STATUS_DO_NOT_DISTURB,
@@ -45,12 +46,31 @@ function SSF:Initialize()
 	self.Defaults = {
 		chatMsgEnabled = true,
 		debugMode = false,
-		charOverride = false,
+		charOverride = self.PlayerStatus.disabled,
 		Characters = {},
 	}
 
 	-- Saved variables initialization
 	self.SavedVars = ZO_SavedVars:NewAccountWide("StaticsSocialFeaturesAccountWideVars", self.varsVersion, nil, self.Defaults, GetWorldName())
+	-- Update Character list (preserve any settings)
+	local NewData = {}
+	for i=1, GetNumCharacters() do
+		local name, _, _, _, _, _, id, _ = GetCharacterInfo(i)
+		local found = false
+		name = zo_strformat("<<1>>", name)
+		for index, value in ipairs(self.SavedVars.Characters) do
+			if value.id == id then
+				NewData[i] = {name = name, id = id, charOverride = value.charOverride}
+				found = true
+				break
+			end
+		end
+		if not found then
+			NewData[i] = {name = name, id = id, charOverride = self.Defaults.charOverride}
+		end
+	end
+	table.sort(NewData, function(a, b) return a.name < b.name end)
+	self.SavedVars.Characters = NewData
 
 	-- Data Manager Initializations
 	self.SM = StaticsSocialFeaturesInitSettingsDataManager(self)
@@ -63,19 +83,23 @@ function SSF:Initialize()
 																experience this is actually opposite what it means.
 	Outputs:			None
 	Description:	Fired when the player character is available after loading screens such as changing 
-								zones, reloadui and logging in. Will collect the character ID, add it if needed and
-								set the player's status appropriately.
+								zones, reloadui and logging in. Sets the desired player status for the logged in
+								character, if not disabled.
 	------------------------------------------------------------------------------------------------]]--
 	local function OnPlayerActivated(eventCode, initial)
 		self:DebugMsg("OnPlayerActivated event fired.")
-		self:SendToChat(GetPlayerStatus())
+		--self:SendToChat(GetPlayerStatus())
 		if not initial then
-			for i=1, GetNumCharacters() do
-				local name, _, _, _, _, _, id, _ = GetCharacterInfo(i)
-				if not self.SavedVars.Characters[id] then
-					self.SavedVars.Characters[id] = self.Defaults.charOverride
+			local i
+			local _, _, _, _, _, _, id, _ = GetCharacterInfo(i)
+			for index, value in ipairs(self.SavedVars.Characters) do
+				if value.id == id then
+					i = index
+					break
 				end
-				--self:SendToChat(zo_strformat("<<1>>: <<2>>", name, id))
+			end
+			if self.SavedVars.Characters[i].charOverride ~= self.PlayerStatus.disabled then
+				SelectPlayerStatus(self.SavedVars.Characters[i].charOverride)
 			end
 		end
   end
