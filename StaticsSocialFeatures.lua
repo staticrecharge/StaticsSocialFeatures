@@ -10,8 +10,11 @@ Description:		Adds specific social featues.
 Libraries and Aliases
 ------------------------------------------------------------------------------------------------]]--
 local LAM2 = LibAddonMenu2
+local LCM = LibCustomMenu
 local CS = CHAT_SYSTEM
 local EM = EVENT_MANAGER
+local FLM = FRIENDS_LIST_MANAGER
+local FL = FRIENDS_LIST
 
 
 --[[------------------------------------------------------------------------------------------------
@@ -31,7 +34,7 @@ function SSF:Initialize()
 	-- Static definitions
 	self.addonName = "StaticsSocialFeatures"
 	self.addonVersion = "1.0.0"
-	self.varsVersion = 1
+	self.varsVersion = 2
 	self.author = "|CFF0000Static_Recharge|r"
 	self.chatPrefix = "|cFFFFFF[SSF]:|r "
 	self.chatTextColor = "|cFFFFFF"
@@ -47,8 +50,12 @@ function SSF:Initialize()
 		chatMsgEnabled = true,
 		debugMode = false,
 		charOverride = self.PlayerStatus.disabled,
+		afkTimerEnabled = true,
+		afkTimeout = 600, -- s
 		Characters = {},
+		Favs = {},
 	}
+	self.favTexture = "|t90%:90%:esoui/art/targetmarkers/target_gold_star_64.dds|t"
 
 	-- Saved variables initialization
 	self.SavedVars = ZO_SavedVars:NewAccountWide("StaticsSocialFeaturesAccountWideVars", self.varsVersion, nil, self.Defaults, GetWorldName())
@@ -72,40 +79,21 @@ function SSF:Initialize()
 	table.sort(NewData, function(a, b) return a.name < b.name end)
 	self.SavedVars.Characters = NewData
 
-	-- Data Manager Initializations
+
+	-- Manager Initializations
 	self.SM = StaticsSocialFeaturesInitSettingsDataManager(self)
-	
-	-- Event fired functions
-	--[[------------------------------------------------------------------------------------------------
-	local function OnPlayerActivated(eventCode, initial)
-	Inputs:				eventCode				- Internal ZOS event code, not used here.
-								initial					- Indicates if this is the first activation from log-in. From 
-																experience this is actually opposite what it means.
-	Outputs:			None
-	Description:	Fired when the player character is available after loading screens such as changing 
-								zones, reloadui and logging in. Sets the desired player status for the logged in
-								character, if not disabled.
-	------------------------------------------------------------------------------------------------]]--
-	local function OnPlayerActivated(eventCode, initial)
-		self:DebugMsg("OnPlayerActivated event fired.")
-		--self:SendToChat(GetPlayerStatus())
-		if not initial then
-			local i
-			local _, _, _, _, _, _, id, _ = GetCharacterInfo(i)
-			for index, value in ipairs(self.SavedVars.Characters) do
-				if value.id == id then
-					i = index
-					break
-				end
-			end
-			if self.SavedVars.Characters[i].charOverride ~= self.PlayerStatus.disabled then
-				SelectPlayerStatus(self.SavedVars.Characters[i].charOverride)
-			end
-		end
-  end
+	self.AFKM = StaticsSocialFeaturesInitAFKManager(self)
+
+	-- ZO Hooks
+	self:FriendListHook()
+	self:FriendEntryHook()
+	self:FriendListSortHook()
+
+	-- Register Context Menu
+	self:FriendListContextMenu()
 
 	-- Event Registrations
-	EM:RegisterForEvent(self.addonName, EVENT_PLAYER_ACTIVATED, OnPlayerActivated)
+	EM:RegisterForEvent(self.addonName, EVENT_PLAYER_ACTIVATED, function(...) self:OnPlayerActivated(...) end)
 
 	-- Slash commands declarations
 	SLASH_COMMANDS["/ssf"] = function(...) self:CommandParse(...) end
@@ -113,6 +101,136 @@ function SSF:Initialize()
 	-- Keybindings associations
 	
 	self.initialized = true
+end
+
+
+--[[------------------------------------------------------------------------------------------------
+function SSF:FriendListHook()
+Inputs:			  None
+Outputs:			None
+Description:	Hooks into the friends list manager to add Fav tag to all entries
+------------------------------------------------------------------------------------------------]]--
+function SSF:FriendListHook()
+	ZO_PostHook(FLM, 'BuildMasterList', function(self_)
+		for i, friendData in ipairs(self_.masterList) do
+			if self.SavedVars.Favs[friendData.displayName] then
+				friendData.favs = false -- ZO sort function sorts false entries before true ones
+			else
+				friendData.favs = true
+			end
+		end
+	end)
+end
+
+
+--[[------------------------------------------------------------------------------------------------
+function SSF:FriendEntryHook()
+Inputs:			  None
+Outputs:			None
+Description:	Hooks into the friends list manager to add the icon for Fav friends.
+------------------------------------------------------------------------------------------------]]--
+function SSF:FriendEntryHook()
+	ZO_PostHook(FLM, 'SetupEntry', function(self_, control, data, selected)
+		local displayNameLabel = control:GetNamedChild("DisplayName")
+		if displayNameLabel then
+			if self.SavedVars.Favs[data.displayName] then
+				displayNameLabel:SetText(zo_strformat("<<1>> <<2>>", self.favTexture, ZO_FormatUserFacingDisplayName(data.displayName)))
+			end
+		end
+	end)
+end
+
+
+--[[------------------------------------------------------------------------------------------------
+function SSF:FriendListSortHook()
+Inputs:			  None
+Outputs:			None
+Description:	Hooks into the friends list to sort Fav friends to the top.
+------------------------------------------------------------------------------------------------]]--
+function SSF:FriendListSortHook()
+	FRIENDS_LIST_ENTRY_SORT_KEYS["favs"] = {tiebreaker = "status"}
+	ZO_PreHook(FL, 'SortScrollList', function(self_)
+		self_.currentSortKey = "favs"
+	end)
+end
+
+
+--[[------------------------------------------------------------------------------------------------
+function SSF:FriendListContextMenu()
+Inputs:			  None
+Outputs:			None
+Description:	Adds an entry to the friends list context menu.
+------------------------------------------------------------------------------------------------]]--
+function SSF:FriendListContextMenu()
+	local function AddItem(data)
+		local name = data.displayName
+		if self.SavedVars.Favs[name] then 
+			AddCustomMenuItem("Remove from Fav Friends", function() self:RemoveFavFriend(name) end)
+			if data.status == self.PlayerStatus.offline then
+				AddCustomMenuItem("Invite to Group", function() GroupInviteByName(name) end)
+			end
+		else
+			AddCustomMenuItem("Add to Fav Friends", function() self:AddFavFriend(name) end)
+		end
+	end
+	LCM:RegisterFriendsListContextMenu(AddItem, LCM.CATEGORY_LATE)
+end
+
+
+--[[------------------------------------------------------------------------------------------------
+function SSF:AddFavFriend(name)
+Inputs:			  name 						- The @name to add to the fav friends list
+Outputs:			None
+Description:	Adds the name to the Fav list.
+------------------------------------------------------------------------------------------------]]--
+function SSF:AddFavFriend(name)
+	self.SavedVars.Favs[name] = true
+	--self:SendToChat(name .. " added to Favs.")
+	FLM:BuildMasterList()
+	FL:RefreshFilters()
+end
+
+
+--[[------------------------------------------------------------------------------------------------
+function SSF:RemoveFavFriend(name)
+Inputs:			  name 						- The @name to remove from the fav friends list
+Outputs:			None
+Description:	Removes the name from the Fav list.
+------------------------------------------------------------------------------------------------]]--
+function SSF:RemoveFavFriend(name)
+	self.SavedVars.Favs[name] = nil
+	--self:SendToChat(name .. " removed from Favs.")
+	FLM:BuildMasterList()
+	FL:RefreshFilters()
+end
+
+
+--[[------------------------------------------------------------------------------------------------
+function OnPlayerActivated(eventCode, initial)
+Inputs:				eventCode				- Internal ZOS event code, not used here.
+							initial					- Indicates if this is the first activation from log-in. From 
+															experience this is actually opposite what it means.
+Outputs:			None
+Description:	Fired when the player character is available after loading screens such as changing 
+							zones, reloadui and logging in. Sets the desired player status for the logged in
+							character, if not disabled.
+------------------------------------------------------------------------------------------------]]--
+function SSF:OnPlayerActivated(eventCode, initial)
+	self:DebugMsg("OnPlayerActivated event fired.")
+	--self:SendToChat(GetPlayerStatus())
+	if not initial then
+		local i
+		local _, _, _, _, _, _, id, _ = GetCharacterInfo(i)
+		for index, value in ipairs(self.SavedVars.Characters) do
+			if value.id == id then
+				i = index
+				break
+			end
+		end
+		if self.SavedVars.Characters[i].charOverride ~= self.PlayerStatus.disabled then
+			SelectPlayerStatus(self.SavedVars.Characters[i].charOverride)
+		end
+	end
 end
 
 
@@ -182,7 +300,7 @@ function SSF:CommandParse(args)
 	else
 		
 	end
-end	
+end
 
 
 --[[------------------------------------------------------------------------------------------------

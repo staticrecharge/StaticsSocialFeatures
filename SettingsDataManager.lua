@@ -57,6 +57,48 @@ function SDM:CreateSettingsPanel()
   local optionsData = {}
 	local i = 1
 
+	optionsData[i] = {
+		type = "header",
+		name = "AFK",
+	}
+
+	i = i + 1
+	optionsData[i] = {
+		type = "description",
+    text = "If enabled, switches you to Away after the timeout. Also automatically switches you back to Online when activity is detected.",
+    width = "full",
+	}
+
+	i = i + 1
+	optionsData[i] = {
+		type = "checkbox",
+    name = "AFK Timeout Enabled",
+    getFunc = function() return Parent.SavedVars.afkTimerEnabled end,
+    setFunc = function(value) Parent.SavedVars.afkTimerEnabled = value if value == true then Parent.AFKM:StartTimerAgain() end end,
+    tooltip = "Enables the AFK timer.",
+    width = "full",
+		default = Parent.Defaults.afkTimerEnabled,
+	}
+
+	i = i + 1
+	optionsData[i]= {
+		type = "slider",
+		name = "AFK Timeout",
+		getFunc = function() return Parent.SavedVars.afkTimeout end,
+		setFunc = function(value) Parent.SavedVars.afkTimeout = value end,
+		min = 30,
+		max = 1200,
+		step = 1,
+		clampInput = false,
+		decimals = 0,
+		autoSelect = true,
+		readOnly = false,
+		tooltip = "AFK Timeout in seconds.",
+		width = "full", -- or "half" (optional)
+		disabled = function() return not Parent.SavedVars.afkTimerEnabled end,
+		default = Parent.Defaults.afkTimeout,
+}
+
 	local controls = {}
 	local k = 1
 
@@ -90,6 +132,7 @@ function SDM:CreateSettingsPanel()
 	}
 	end
 
+	i = i + 1
 	optionsData[i] = {
 		type = "submenu",
 		name = "Force Character Status",

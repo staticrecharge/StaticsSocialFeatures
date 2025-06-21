@@ -6,7 +6,7 @@
     {
       "label": "copy",
       "type": "shell",
-      "command": "robocopy 'D:\\Documents\\Add-on Dev\\StaticsSocialFeatures' 'D:\\Documents\\Elder Scrolls Online\\live\\AddOns\\StaticsSocialFeatures' StaticsSocialFeatures.txt StaticsSocialFeatures.lua SettingsDataManager.lua changelog.readme",
+      "command": "robocopy 'D:\\Documents\\Add-on Dev\\StaticsSocialFeatures' 'D:\\Documents\\Elder Scrolls Online\\live\\AddOns\\StaticsSocialFeatures' AFKManager.lua StaticsSocialFeatures.txt StaticsSocialFeatures.lua SettingsDataManager.lua changelog.readme",
       "problemMatcher": [],
       "group": {
         "kind": "build",
