@@ -148,8 +148,9 @@ Outputs:			None
 Description:	Hooks into the friends list to sort Fav friends to the top.
 ------------------------------------------------------------------------------------------------]]--
 function SSF:FriendListSortHook()
-	FRIENDS_LIST_ENTRY_SORT_KEYS["favs"] = {tiebreaker = "status"}
 	ZO_PreHook(FL, 'SortScrollList', function(self_)
+		--local prevSortKey = self_.currentSortKey
+		FRIENDS_LIST_ENTRY_SORT_KEYS["favs"] = {tiebreaker = "status"}
 		self_.currentSortKey = "favs"
 	end)
 end

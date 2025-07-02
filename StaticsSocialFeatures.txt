@@ -18,6 +18,5 @@
 AFKManager.lua
 SettingsDataManager.lua
 StaticsSocialFeatures.lua
-StatusIndicator.xml
 
 # Special thanks to @blaize_0 for helping me test this add-on!
