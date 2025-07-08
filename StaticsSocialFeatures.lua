@@ -15,6 +15,7 @@ local CS = CHAT_SYSTEM
 local EM = EVENT_MANAGER
 local FLM = FRIENDS_LIST_MANAGER
 local FL = FRIENDS_LIST
+local CR = CHAT_ROUTER
 
 
 --[[------------------------------------------------------------------------------------------------
@@ -51,6 +52,11 @@ function SSF:Initialize()
 		fav = 2,
 		none = 3,
 	}
+	self.SharedGuildsSelection = {
+		all = 1,
+		fav = 2,
+		none = 3,
+	}
 	self.Defaults = {
 		chatMsgEnabled = true,
 		debugMode = false,
@@ -63,6 +69,7 @@ function SSF:Initialize()
 		Favs = {},
 		friendMsg = self.FriendMsgType.all,
 		favFriendsTop = true,
+		sharedGuilds = self.SharedGuildsSelection.all,
 	}
 	self.favTexture = "|t90%:90%:esoui/art/targetmarkers/target_gold_star_64.dds|t"
 	self.currentCharIndex = nil
@@ -77,13 +84,13 @@ function SSF:Initialize()
 		name = zo_strformat("<<1>>", name)
 		for index, value in ipairs(self.SavedVars.Characters) do
 			if value.id == id then
-				NewData[i] = {name = name, id = id, charOverride = value.charOverride}
+				NewData[i] = {name = name, id = id, charOverride = value.charOverride, charOverrideLogin = value.charOverrideLogin, charOverrideLogout = value.charOverrideLogout}
 				found = true
 				break
 			end
 		end
 		if not found then
-			NewData[i] = {name = name, id = id, charOverride = self.Defaults.charOverride}
+			NewData[i] = {name = name, id = id, charOverride = self.Defaults.charOverride, charOverrideLogin = self.Defaults.charOverrideLogin, charOverrideLogout = self.Defaults.charOverrideLogout}
 		end
 	end
 	table.sort(NewData, function(a, b) return a.name < b.name end)
@@ -101,6 +108,7 @@ function SSF:Initialize()
 	self:LogoutQuitHook()
 	self:FriendMessageHook()
 	self:FriendKeybindStripHook()
+	self:FriendListTooltipHook()
 
 	-- Register Context Menu
 	self:FriendListContextMenu()
@@ -204,26 +212,9 @@ Description:	Hooks into the friends message to allow only showing for fav friend
 ------------------------------------------------------------------------------------------------]]--
 function SSF:FriendMessageHook()
 	function self:OnFriendStatusChanged(eventCode, displayName, characterName, oldStatus, newStatus)
-		local wasOnline = oldStatus ~= PLAYER_STATUS_OFFLINE
-		local isOnline = newStatus ~= PLAYER_STATUS_OFFLINE
-		if wasOnline ~= isOnline then
-			local text
-			local displayNameLink = ZO_LinkHandler_CreateDisplayNameLink(displayName)
-			local characterNameLink = ZO_LinkHandler_CreateCharacterLink(characterName)
-			if isOnline then
-				if characterName ~= "" then
-						text = zo_strformat(SI_FRIENDS_LIST_FRIEND_CHARACTER_LOGGED_ON, displayNameLink, characterNameLink)
-				else
-						text = zo_strformat(SI_FRIENDS_LIST_FRIEND_LOGGED_ON, displayNameLink)
-				end
-			else
-				if characterName ~= "" then
-						text = zo_strformat(SI_FRIENDS_LIST_FRIEND_CHARACTER_LOGGED_OFF, displayNameLink, characterNameLink)
-				else
-						text = zo_strformat(SI_FRIENDS_LIST_FRIEND_LOGGED_OFF, displayNameLink)
-				end
-			end
-			return text, nil, displayName
+		if self.SavedVars.friendMsg == self.FriendMsgType.none then return end
+		if self.SavedVars.friendMsg == self.FriendMsgType.all or (self.SavedVars.friendMsg == self.FriendMsgType.fav and self.SavedVars.Favs[displayName]) then
+			CR:FormatAndAddChatMessage(eventCode, displayName, characterName, oldStatus, newStatus)
 		end
 	end
 	EM:UnregisterForEvent("ChatRouter", EVENT_FRIEND_PLAYER_STATUS_CHANGED)
@@ -257,7 +248,66 @@ function SSF:FriendKeybindStripHook()
 				end
 			end
 			return false
-	end
+		end
+		-- Add Fav
+		--[[self_.keybindStripDescriptor[3] = {
+			name = "Add Fav",
+			keybind = "UI_SHORTCUT_QUATERNARY",
+			callback = function()
+				local data = ZO_ScrollList_GetData(self_.mouseOverRow)
+				self:AddFavFriend(data.displayName)
+			end,
+			visible = function()
+				if not self.SavedVars.Favs[data.displayName] then
+					return true
+				end
+				return false
+			end,
+		}]]--
+		-- Remove Fav
+		--[[self_.keybindStripDescriptor[4] = {
+			name = "Remove Fav",
+			keybind = "UI_SHORTCUT_QUATERNARY",
+			callback = function()
+				local data = ZO_ScrollList_GetData(self_.mouseOverRow)
+				self:RemoveFavFriend(data.displayName)
+			end,
+			visible = function()
+				if self.SavedVars.Favs[data.displayName] then
+					return true
+				end
+				return false
+			end
+		}]]--
+	end)
+end
+
+
+--[[------------------------------------------------------------------------------------------------
+function SSF:FriendListTooltipHook()
+Inputs:			  None
+Outputs:			None
+Description:	Hooks into the friends list to sort Fav friends to the top.
+------------------------------------------------------------------------------------------------]]--
+function SSF:FriendListTooltipHook()
+	ZO_PostHook(ZO_SocialListKeyboard, 'DisplayName_OnMouseEnter', function(self_, control)
+		if self.SavedVars.sharedGuilds == self.SharedGuildsSelection.none then return end
+		local row = control:GetParent()
+    local data = ZO_ScrollList_GetData(row)
+		local guilds = {}
+		for i=1, GetNumGuilds() do
+			for j=1, GetGuildInfo(GetGuildId(i)) do
+				local name = GetGuildMemberInfo(GetGuildId(i),j)
+				if name == data.displayName then
+					table.insert(guilds, GetGuildName(GetGuildId(i)))
+					break
+				end
+			end
+		end
+		guilds = table.concat(guilds, "\n")
+		if data and data.hasCharacter and guilds ~= "" and (self.SavedVars.sharedGuilds == self.SharedGuildsSelection.all or (self.SavedVars.sharedGuilds == self.SharedGuildsSelection.fav and  self.SavedVars.Favs[data.displayName]))then
+			SetTooltipText(InformationTooltip, guilds)
+		end
 	end)
 end
 
@@ -272,12 +322,13 @@ function SSF:FriendListContextMenu()
 	local function AddItem(data)
 		local name = data.displayName
 		if self.SavedVars.Favs[name] then 
-			AddCustomMenuItem("Remove from Fav Friends", function() self:RemoveFavFriend(name) end)
+			AddCustomMenuItem("Remove Fav Friend", function() self:RemoveFavFriend(name) end)
 			if data.status == self.PlayerStatus.offline then
 				AddCustomMenuItem("Invite to Group", function() GroupInviteByName(name) end)
+				AddCustomMenuItem("Whisper", function() StartChatInput("", CHAT_CHANNEL_WHISPER, name) end)
 			end
 		else
-			AddCustomMenuItem("Add to Fav Friends", function() self:AddFavFriend(name) end)
+			AddCustomMenuItem("Add Fav Friend", function() self:AddFavFriend(name) end)
 		end
 	end
 	LCM:RegisterFriendsListContextMenu(AddItem, LCM.CATEGORY_LATE)

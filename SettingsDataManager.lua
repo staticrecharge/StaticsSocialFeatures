@@ -142,7 +142,13 @@ function SDM:CreateSettingsPanel()
 		type = "checkbox",
     name = "Show Fav Friends at Top",
     getFunc = function() return Parent.SavedVars.favFriendsTop end,
-    setFunc = function(value) Parent.SavedVars.favFriendsTop = value FL:RefreshFilters() end,
+    setFunc = function(value)
+			Parent.SavedVars.favFriendsTop = value
+			if value == false then
+				FL.currentSortKey = "status"
+			end
+			FL:RefreshFilters()
+		end,
     tooltip = "Shows your Fav friends at the top of your friends list at all times.",
     width = "full",
 		default = Parent.Defaults.favFriendsTop,
@@ -227,6 +233,27 @@ function SDM:CreateSettingsPanel()
   optionsData[i] = {
 		type = "header",
 		name = "Misc.",
+	}
+
+	choicesValues = {
+		Parent.SharedGuildsSelection.all,
+		Parent.SharedGuildsSelection.fav,
+		Parent.SharedGuildsSelection.none,
+	}
+
+	i = i + 1
+	optionsData[i] = {
+		type = "dropdown",
+		name = "Shared Guild Info", -- or string id or function returning a string
+		choices = {"All", "Fav Only", "None"},
+		choicesValues = choicesValues, -- if specified, these values will get passed to setFunc instead (optional)
+		getFunc = function() return Parent.SavedVars.sharedGuilds end, -- if multiSelect is true the getFunc must return a table
+		setFunc = function(var) Parent.SavedVars.sharedGuilds = var end, -- if multiSelect is true the setFunc's var must be a table
+		tooltip = "Displays which guilds you share with the highlighted friend.",
+		width = "full", -- or "half" (optional)
+		scrollable = false, -- boolean or number, if set the dropdown will feature a scroll bar if there are a large amount of choices and limit the visible lines to the specified number or 10 if true is used (optional)
+		default = Parent.Defaults.sharedGuilds, -- default value or function that returns the default value (optional)
+		multiSelect = false, -- boolean or function returning a boolean. If set to true you can select multiple entries at the list (optional)
 	}
 
 	i = i + 1
