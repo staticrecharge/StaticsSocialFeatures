@@ -11,6 +11,7 @@ Libraries and Aliases
 local LAM2 = LibAddonMenu2
 local CM = CALLBACK_MANAGER
 local WM = WINDOW_MANAGER
+local FL = FRIENDS_LIST
 
 
 --[[------------------------------------------------------------------------------------------------
@@ -55,7 +56,11 @@ function SDM:CreateSettingsPanel()
 	}
 
   local optionsData = {}
+	local choicesValues = {}
+	local controls = {}
 	local i = 1
+	local k = 1
+
 
 	optionsData[i] = {
 		type = "header",
@@ -81,9 +86,9 @@ function SDM:CreateSettingsPanel()
 	}
 
 	i = i + 1
-	optionsData[i]= {
+	optionsData[i] = {
 		type = "slider",
-		name = "AFK Timeout",
+		name = "AFK Timeout (s)",
 		getFunc = function() return Parent.SavedVars.afkTimeout end,
 		setFunc = function(value) Parent.SavedVars.afkTimeout = value end,
 		min = 30,
@@ -93,22 +98,71 @@ function SDM:CreateSettingsPanel()
 		decimals = 0,
 		autoSelect = true,
 		readOnly = false,
-		tooltip = "AFK Timeout in seconds.",
 		width = "full", -- or "half" (optional)
 		disabled = function() return not Parent.SavedVars.afkTimerEnabled end,
 		default = Parent.Defaults.afkTimeout,
-}
+	}
 
-	local controls = {}
-	local k = 1
+	i = i + 1
+	optionsData[i] = {
+		type = "header",
+		name = "Fav Friends",
+	}
 
-	controls[k] = {
+	i = i + 1
+	optionsData[i] = {
 		type = "description",
-    text = "If enabled, forces your player status for the specific characters. Note that if you were listed as online/away/DND before logging into these characters, you will still show a message to your friends.",
+    text = "You can add or remove friends from your Fav list by right clicking on their name in the friends list.",
     width = "full",
 	}
 
-	local choicesValues = {
+	choicesValues = {
+		Parent.FriendMsgType.all,
+		Parent.FriendMsgType.fav,
+		Parent.FriendMsgType.none,
+	}
+
+	i = i + 1
+	optionsData[i] = {
+		type = "dropdown",
+		name = "Friend Status Messages", -- or string id or function returning a string
+		choices = {"All", "Fav Only", "None"},
+		choicesValues = choicesValues, -- if specified, these values will get passed to setFunc instead (optional)
+		getFunc = function() return Parent.SavedVars.friendMsg end, -- if multiSelect is true the getFunc must return a table
+		setFunc = function(var) Parent.SavedVars.friendMsg = var end, -- if multiSelect is true the setFunc's var must be a table
+		tooltip = "Control which friend status messages are displayed.",
+		width = "full", -- or "half" (optional)
+		scrollable = false, -- boolean or number, if set the dropdown will feature a scroll bar if there are a large amount of choices and limit the visible lines to the specified number or 10 if true is used (optional)
+		default = Parent.Defaults.friendMsg, -- default value or function that returns the default value (optional)
+		multiSelect = false, -- boolean or function returning a boolean. If set to true you can select multiple entries at the list (optional)
+	}
+
+	i = i + 1
+	optionsData[i] = {
+		type = "checkbox",
+    name = "Show Fav Friends at Top",
+    getFunc = function() return Parent.SavedVars.favFriendsTop end,
+    setFunc = function(value) Parent.SavedVars.favFriendsTop = value FL:RefreshFilters() end,
+    tooltip = "Shows your Fav friends at the top of your friends list at all times.",
+    width = "full",
+		default = Parent.Defaults.favFriendsTop,
+	}
+
+	i = i + 1
+	optionsData[i] = {
+		type = "divider",
+		width = "full",
+		height = 10,
+		alpha = 1.00,
+	}
+
+	controls[k] = {
+		type = "description",
+    text = "If enabled, forces your player status for the specific characters.",
+    width = "full",
+	}
+
+	choicesValues = {
 		Parent.PlayerStatus.disabled,
 		Parent.PlayerStatus.online,
 		Parent.PlayerStatus.away,
@@ -116,20 +170,50 @@ function SDM:CreateSettingsPanel()
 		Parent.PlayerStatus.offline,
 	}
 
-	for key, value in ipairs(Parent.SavedVars.Characters) do
+	for key, char in ipairs(Parent.SavedVars.Characters) do
 		k = k + 1
-		controls[k] = {
+		local subcontrols = {}
+		local j = 1
+		subcontrols[j] = {
 			type = "dropdown",
-			name = value.name, -- or string id or function returning a string
+			name = "Status", -- or string id or function returning a string
 			choices = {"Disabled", "Online", "Away", "Do Not Disturb", "Offline"},
 			choicesValues = choicesValues, -- if specified, these values will get passed to setFunc instead (optional)
-			getFunc = function() return value.charOverride end, -- if multiSelect is true the getFunc must return a table
-			setFunc = function(var) value.charOverride = var end, -- if multiSelect is true the setFunc's var must be a table
-			width = "half", -- or "half" (optional)
+			getFunc = function() return char.charOverride end, -- if multiSelect is true the getFunc must return a table
+			setFunc = function(var) char.charOverride = var end, -- if multiSelect is true the setFunc's var must be a table
+			width = "full", -- or "half" (optional)
 			scrollable = false, -- boolean or number, if set the dropdown will feature a scroll bar if there are a large amount of choices and limit the visible lines to the specified number or 10 if true is used (optional)
 			default = Parent.Defaults.charOverride, -- default value or function that returns the default value (optional)
 			multiSelect = false, -- boolean or function returning a boolean. If set to true you can select multiple entries at the list (optional)
-	}
+		}
+
+		j = j + 1
+		subcontrols[j] = {
+			type = "checkbox",
+			name = "Login",
+			getFunc = function() return char.charOverrideLogin end,
+			setFunc = function(value) char.charOverrideLogin = value end,
+			width = "half",
+			disabled = function() return char.charOverride == Parent.PlayerStatus.disabled end,
+			default = Parent.Defaults.charOverrideLogin,
+		}
+
+		j = j + 1
+		subcontrols[j] = {
+			type = "checkbox",
+			name = "Logout",
+			getFunc = function() return char.charOverrideLogout end,
+			setFunc = function(value) char.charOverrideLogout = value end,
+			width = "half",
+			disabled = function() return char.charOverride == Parent.PlayerStatus.disabled end,
+			default = Parent.Defaults.charOverrideLogout,
+		}
+
+		controls[k] = {
+			type = "submenu",
+			name = char.name,
+			controls = subcontrols,
+		}			
 	end
 
 	i = i + 1

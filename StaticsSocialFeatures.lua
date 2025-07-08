@@ -46,16 +46,26 @@ function SSF:Initialize()
 		dnd = PLAYER_STATUS_DO_NOT_DISTURB,
 		offline = PLAYER_STATUS_OFFLINE,
 	}
+	self.FriendMsgType = {
+		all = 1,
+		fav = 2,
+		none = 3,
+	}
 	self.Defaults = {
 		chatMsgEnabled = true,
 		debugMode = false,
 		charOverride = self.PlayerStatus.disabled,
+		charOverrideLogin = false,
+		charOverrideLogout = false,
 		afkTimerEnabled = true,
 		afkTimeout = 600, -- s
 		Characters = {},
 		Favs = {},
+		friendMsg = self.FriendMsgType.all,
+		favFriendsTop = true,
 	}
 	self.favTexture = "|t90%:90%:esoui/art/targetmarkers/target_gold_star_64.dds|t"
+	self.currentCharIndex = nil
 
 	-- Saved variables initialization
 	self.SavedVars = ZO_SavedVars:NewAccountWide("StaticsSocialFeaturesAccountWideVars", self.varsVersion, nil, self.Defaults, GetWorldName())
@@ -88,6 +98,9 @@ function SSF:Initialize()
 	self:FriendListHook()
 	self:FriendEntryHook()
 	self:FriendListSortHook()
+	self:LogoutQuitHook()
+	self:FriendMessageHook()
+	self:FriendKeybindStripHook()
 
 	-- Register Context Menu
 	self:FriendListContextMenu()
@@ -112,6 +125,7 @@ Description:	Hooks into the friends list manager to add Fav tag to all entries
 ------------------------------------------------------------------------------------------------]]--
 function SSF:FriendListHook()
 	ZO_PostHook(FLM, 'BuildMasterList', function(self_)
+		self:DebugMsg("Friend List prehook started.")
 		for i, friendData in ipairs(self_.masterList) do
 			if self.SavedVars.Favs[friendData.displayName] then
 				friendData.favs = false -- ZO sort function sorts false entries before true ones
@@ -131,6 +145,7 @@ Description:	Hooks into the friends list manager to add the icon for Fav friends
 ------------------------------------------------------------------------------------------------]]--
 function SSF:FriendEntryHook()
 	ZO_PostHook(FLM, 'SetupEntry', function(self_, control, data, selected)
+		self:DebugMsg("Friend Listy Entry prehook started.")
 		local displayNameLabel = control:GetNamedChild("DisplayName")
 		if displayNameLabel then
 			if self.SavedVars.Favs[data.displayName] then
@@ -149,9 +164,100 @@ Description:	Hooks into the friends list to sort Fav friends to the top.
 ------------------------------------------------------------------------------------------------]]--
 function SSF:FriendListSortHook()
 	ZO_PreHook(FL, 'SortScrollList', function(self_)
-		--local prevSortKey = self_.currentSortKey
-		FRIENDS_LIST_ENTRY_SORT_KEYS["favs"] = {tiebreaker = "status"}
-		self_.currentSortKey = "favs"
+		self:DebugMsg("Friend List Sort prehook started.")
+		local prevSortKey = "status"
+		if self_.currentSortKey ~= "favs" then
+			prevSortKey = self_.currentSortKey
+		end
+		FRIENDS_LIST_ENTRY_SORT_KEYS["favs"] = {tiebreaker = prevSortKey}
+		if self.SavedVars.favFriendsTop then
+			self_.currentSortKey = "favs"
+		end
+	end)
+end
+
+
+--[[------------------------------------------------------------------------------------------------
+function SSF:LogoutQuitHook()
+Inputs:			  None
+Outputs:			None
+Description:	Hooks into the logout and quit function to set character status if needed before actually logging out.
+------------------------------------------------------------------------------------------------]]--
+function SSF:LogoutQuitHook()
+	function self:OnLogout()
+		self:DebugMsg("Logout/Quit prehook started.")
+		local i = self.currentCharIndex
+		if self.SavedVars.Characters[i].charOverride ~= self.PlayerStatus.disabled and self.SavedVars.Characters[i].charOverrideLogout then
+			SelectPlayerStatus(self.SavedVars.Characters[i].charOverride)
+		end
+	end
+	ZO_PreHook('Logout', function() self:OnLogout() end)
+	ZO_PreHook('Quit', function() self:OnLogout() end)
+end
+
+
+--[[------------------------------------------------------------------------------------------------
+function SSF:FriendMessageHook()
+Inputs:			  None
+Outputs:			None
+Description:	Hooks into the friends message to allow only showing for fav friends.
+------------------------------------------------------------------------------------------------]]--
+function SSF:FriendMessageHook()
+	function self:OnFriendStatusChanged(eventCode, displayName, characterName, oldStatus, newStatus)
+		local wasOnline = oldStatus ~= PLAYER_STATUS_OFFLINE
+		local isOnline = newStatus ~= PLAYER_STATUS_OFFLINE
+		if wasOnline ~= isOnline then
+			local text
+			local displayNameLink = ZO_LinkHandler_CreateDisplayNameLink(displayName)
+			local characterNameLink = ZO_LinkHandler_CreateCharacterLink(characterName)
+			if isOnline then
+				if characterName ~= "" then
+						text = zo_strformat(SI_FRIENDS_LIST_FRIEND_CHARACTER_LOGGED_ON, displayNameLink, characterNameLink)
+				else
+						text = zo_strformat(SI_FRIENDS_LIST_FRIEND_LOGGED_ON, displayNameLink)
+				end
+			else
+				if characterName ~= "" then
+						text = zo_strformat(SI_FRIENDS_LIST_FRIEND_CHARACTER_LOGGED_OFF, displayNameLink, characterNameLink)
+				else
+						text = zo_strformat(SI_FRIENDS_LIST_FRIEND_LOGGED_OFF, displayNameLink)
+				end
+			end
+			return text, nil, displayName
+		end
+	end
+	EM:UnregisterForEvent("ChatRouter", EVENT_FRIEND_PLAYER_STATUS_CHANGED)
+	EM:RegisterForEvent("ChatRouter", EVENT_FRIEND_PLAYER_STATUS_CHANGED, function(...) self:OnFriendStatusChanged(...) end)
+end
+
+
+--[[------------------------------------------------------------------------------------------------
+function SSF:FriendKeybindStripHook()
+Inputs:			  None
+Outputs:			None
+Description:	Hooks into the friends keybind strip to add the invite and whisper option for offline 
+							favs.
+------------------------------------------------------------------------------------------------]]--
+function SSF:FriendKeybindStripHook()
+	ZO_PostHook(FL, 'InitializeKeybindDescriptors', function(self_)
+		-- Whisper
+		self_.keybindStripDescriptor[1].visible = function()
+			if(self_.mouseOverRow and IsChatSystemAvailableForCurrentPlatform()) then
+				local data = ZO_ScrollList_GetData(self_.mouseOverRow)
+				return data and data.hasCharacter and (data.online or self.SavedVars.Favs[data.displayName])
+			end
+			return false
+		end
+		-- Group Invite
+		self_.keybindStripDescriptor[2].visible = function()
+			if IsGroupModificationAvailable() and self_.mouseOverRow then
+				local data = ZO_ScrollList_GetData(self_.mouseOverRow)
+				if data and data.hasCharacter and (data.online or self.SavedVars.Favs[data.displayName]) then
+					return true
+				end
+			end
+			return false
+	end
 	end)
 end
 
@@ -224,11 +330,12 @@ function SSF:OnPlayerActivated(eventCode, initial)
 		local _, _, _, _, _, _, id, _ = GetCharacterInfo(i)
 		for index, value in ipairs(self.SavedVars.Characters) do
 			if value.id == id then
+				self.currentCharIndex = index
 				i = index
 				break
 			end
 		end
-		if self.SavedVars.Characters[i].charOverride ~= self.PlayerStatus.disabled then
+		if self.SavedVars.Characters[i].charOverride ~= self.PlayerStatus.disabled and self.SavedVars.Characters[i].charOverrideLogin then
 			SelectPlayerStatus(self.SavedVars.Characters[i].charOverride)
 		end
 	end
