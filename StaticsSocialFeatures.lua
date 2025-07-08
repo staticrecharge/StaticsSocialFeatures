@@ -57,6 +57,23 @@ function SSF:Initialize()
 		fav = 2,
 		none = 3,
 	}
+	self.IconTextures = {
+		"/esoui/art/compass/target_gold_star.dds",					-- Gold Star
+		"/esoui/art/compass/target_blue_square.dds",				-- Blue Square
+		"/esoui/art/compass/target_green_circle.dds",				-- Green Circle
+		"/esoui/art/compass/target_orange_triangle.dds",		-- Orange Triangle
+		"/esoui/art/compass/target_pink_moons.dds",					-- Pink Moons
+		"/esoui/art/compass/target_purple_oblivion.dds",		-- Purple Oblivion
+		"/esoui/art/compass/target_red_weapons.dds",				-- Red Weapons
+		"/esoui/art/compass/target_white_skull.dds",				-- White Skull
+		"/esoui/art/armory/buildicons/buildicon_5.dds",			-- CP Star
+		"/esoui/art/armory/buildicons/buildicon_32.dds",		-- Dolmen Swirl
+		"/esoui/art/armory/buildicons/buildicon_34.dds",		-- Veteran
+		"/esoui/art/armory/buildicons/buildicon_46.dds",		-- DB Hand
+		"/esoui/art/armory/buildicons/buildicon_49.dds",		-- Buddies
+		"/esoui/art/tutorial/journal_tabicon_quest_up.dds",	-- Quest Icon
+		"/esoui/art/buttons/featuredot_active.dds",					-- Feature Dot
+	}
 	self.Defaults = {
 		chatMsgEnabled = true,
 		debugMode = false,
@@ -70,8 +87,10 @@ function SSF:Initialize()
 		friendMsg = self.FriendMsgType.all,
 		favFriendsTop = true,
 		sharedGuilds = self.SharedGuildsSelection.all,
+		favIconSize = 90, -- %
+		favIconInheritColor = false,
+		favIconTexture = self.IconTextures[1],
 	}
-	self.favTexture = "|t90%:90%:esoui/art/targetmarkers/target_gold_star_64.dds|t"
 	self.currentCharIndex = nil
 
 	-- Saved variables initialization
@@ -96,6 +115,7 @@ function SSF:Initialize()
 	table.sort(NewData, function(a, b) return a.name < b.name end)
 	self.SavedVars.Characters = NewData
 
+	self:UpdateFavIcon()
 
 	-- Manager Initializations
 	self.SM = StaticsSocialFeaturesInitSettingsDataManager(self)
@@ -122,6 +142,22 @@ function SSF:Initialize()
 	-- Keybindings associations
 	
 	self.initialized = true
+end
+
+
+--[[------------------------------------------------------------------------------------------------
+function SSF:UpdateFavIcon()
+Inputs:			  None
+Outputs:			None
+Description:	Updates the display of the fav icon.
+------------------------------------------------------------------------------------------------]]--
+function SSF:UpdateFavIcon()
+	if self.SavedVars.favIconInheritColor then
+		self.favIcon = zo_strformat("|t<<1>>%:<<2>>%:<<3>>:inheritcolor|t", self.SavedVars.favIconSize, self.SavedVars.favIconSize, self.SavedVars.favIconTexture)
+	else
+		self.favIcon = zo_strformat("|t<<1>>%:<<2>>%:<<3>>|t", self.SavedVars.favIconSize, self.SavedVars.favIconSize, self.SavedVars.favIconTexture)
+	end
+	FL:RefreshData()
 end
 
 
@@ -157,7 +193,7 @@ function SSF:FriendEntryHook()
 		local displayNameLabel = control:GetNamedChild("DisplayName")
 		if displayNameLabel then
 			if self.SavedVars.Favs[data.displayName] then
-				displayNameLabel:SetText(zo_strformat("<<1>> <<2>>", self.favTexture, ZO_FormatUserFacingDisplayName(data.displayName)))
+				displayNameLabel:SetText(zo_strformat("<<1>> <<2>>", self.favIcon, ZO_FormatUserFacingDisplayName(data.displayName)))
 			end
 		end
 	end)
@@ -251,13 +287,14 @@ function SSF:FriendKeybindStripHook()
 		end
 		-- Add Fav
 		--[[self_.keybindStripDescriptor[3] = {
-			name = "Add Fav",
+			name = "+ Fav",
 			keybind = "UI_SHORTCUT_QUATERNARY",
 			callback = function()
 				local data = ZO_ScrollList_GetData(self_.mouseOverRow)
 				self:AddFavFriend(data.displayName)
 			end,
 			visible = function()
+				local data = ZO_ScrollList_GetData(self_.mouseOverRow)
 				if not self.SavedVars.Favs[data.displayName] then
 					return true
 				end

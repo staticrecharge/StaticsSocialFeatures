@@ -61,49 +61,6 @@ function SDM:CreateSettingsPanel()
 	local i = 1
 	local k = 1
 
-
-	optionsData[i] = {
-		type = "header",
-		name = "AFK",
-	}
-
-	i = i + 1
-	optionsData[i] = {
-		type = "description",
-    text = "If enabled, switches you to Away after the timeout. Also automatically switches you back to Online when activity is detected.",
-    width = "full",
-	}
-
-	i = i + 1
-	optionsData[i] = {
-		type = "checkbox",
-    name = "AFK Timeout Enabled",
-    getFunc = function() return Parent.SavedVars.afkTimerEnabled end,
-    setFunc = function(value) Parent.SavedVars.afkTimerEnabled = value if value == true then Parent.AFKM:StartTimerAgain() end end,
-    tooltip = "Enables the AFK timer.",
-    width = "full",
-		default = Parent.Defaults.afkTimerEnabled,
-	}
-
-	i = i + 1
-	optionsData[i] = {
-		type = "slider",
-		name = "AFK Timeout (s)",
-		getFunc = function() return Parent.SavedVars.afkTimeout end,
-		setFunc = function(value) Parent.SavedVars.afkTimeout = value end,
-		min = 30,
-		max = 1200,
-		step = 1,
-		clampInput = false,
-		decimals = 0,
-		autoSelect = true,
-		readOnly = false,
-		width = "full", -- or "half" (optional)
-		disabled = function() return not Parent.SavedVars.afkTimerEnabled end,
-		default = Parent.Defaults.afkTimeout,
-	}
-
-	i = i + 1
 	optionsData[i] = {
 		type = "header",
 		name = "Fav Friends",
@@ -114,6 +71,23 @@ function SDM:CreateSettingsPanel()
 		type = "description",
     text = "You can add or remove friends from your Fav list by right clicking on their name in the friends list.",
     width = "full",
+	}
+
+	i = i + 1
+	optionsData[i] = {
+		type = "checkbox",
+    name = "Show Fav Friends at Top",
+    getFunc = function() return Parent.SavedVars.favFriendsTop end,
+    setFunc = function(value)
+			Parent.SavedVars.favFriendsTop = value
+			if value == false then
+				FL.currentSortKey = "status"
+			end
+			FL:RefreshFilters()
+		end,
+    tooltip = "Shows your Fav friends at the top of your friends list at all times.",
+    width = "full",
+		default = Parent.Defaults.favFriendsTop,
 	}
 
 	choicesValues = {
@@ -137,29 +111,102 @@ function SDM:CreateSettingsPanel()
 		multiSelect = false, -- boolean or function returning a boolean. If set to true you can select multiple entries at the list (optional)
 	}
 
+	choicesValues = {
+		Parent.SharedGuildsSelection.all,
+		Parent.SharedGuildsSelection.fav,
+		Parent.SharedGuildsSelection.none,
+	}
+
+	i = i + 1
+	optionsData[i] = {
+		type = "dropdown",
+		name = "Shared Guild Info", -- or string id or function returning a string
+		choices = {"All", "Fav Only", "None"},
+		choicesValues = choicesValues, -- if specified, these values will get passed to setFunc instead (optional)
+		getFunc = function() return Parent.SavedVars.sharedGuilds end, -- if multiSelect is true the getFunc must return a table
+		setFunc = function(var) Parent.SavedVars.sharedGuilds = var end, -- if multiSelect is true the setFunc's var must be a table
+		tooltip = "Displays which guilds you share with the highlighted friend.",
+		width = "full", -- or "half" (optional)
+		scrollable = false, -- boolean or number, if set the dropdown will feature a scroll bar if there are a large amount of choices and limit the visible lines to the specified number or 10 if true is used (optional)
+		default = Parent.Defaults.sharedGuilds, -- default value or function that returns the default value (optional)
+		multiSelect = false, -- boolean or function returning a boolean. If set to true you can select multiple entries at the list (optional)
+	}
+
+	i = i + 1
+	optionsData[i] = {
+		type = "iconpicker",
+		name = "Fav Icon", -- or string id or function returning a string
+		choices = Parent.IconTextures,
+		getFunc = function() return Parent.SavedVars.favIconTexture end,
+		setFunc = function(icon) Parent.SavedVars.favIconTexture = icon Parent:UpdateFavIcon() end,
+		maxColumns = 5, -- number of icons in one row (optional)
+		visibleRows = 3, -- number of visible rows (optional)
+		iconSize = 32, -- size of the icons (optional)
+		width = "full", --or "half" (optional)
+		default = Parent.Defaults.favIconTexture, -- default value or function that returns the default value (optional)
+	}
+
+	i = i + 1
+	optionsData[i] = {
+		type = "slider",
+		name = "Icon Size (%)",
+		getFunc = function() return Parent.SavedVars.favIconSize end,
+		setFunc = function(value) Parent.SavedVars.favIconSize = value Parent:UpdateFavIcon() end,
+		min = 50,
+		max = 150,
+		step = 5,
+		clampInput = true,
+		decimals = 0,
+		autoSelect = false,
+		readOnly = false,
+		width = "full", -- or "half" (optional)
+		default = Parent.Defaults.favIconSize,
+	}
+
 	i = i + 1
 	optionsData[i] = {
 		type = "checkbox",
-    name = "Show Fav Friends at Top",
-    getFunc = function() return Parent.SavedVars.favFriendsTop end,
-    setFunc = function(value)
-			Parent.SavedVars.favFriendsTop = value
-			if value == false then
-				FL.currentSortKey = "status"
-			end
-			FL:RefreshFilters()
-		end,
-    tooltip = "Shows your Fav friends at the top of your friends list at all times.",
+    name = "Inherit Text Color",
+    getFunc = function() return Parent.SavedVars.favIconInheritColor end,
+    setFunc = function(value) Parent.SavedVars.favIconInheritColor = value Parent:UpdateFavIcon() end,
+    tooltip = "Makes the icon match the color of the text in the friends list.",
     width = "full",
 		default = Parent.Defaults.favFriendsTop,
 	}
 
 	i = i + 1
 	optionsData[i] = {
-		type = "divider",
-		width = "full",
-		height = 10,
-		alpha = 1.00,
+		type = "header",
+		name = "Player Status",
+	}
+
+	i = i + 1
+	optionsData[i] = {
+		type = "checkbox",
+    name = "AFK Timeout Enabled",
+    getFunc = function() return Parent.SavedVars.afkTimerEnabled end,
+    setFunc = function(value) Parent.SavedVars.afkTimerEnabled = value if value == true then Parent.AFKM:StartTimerAgain() end end,
+    tooltip = "If enabled, switches you to Away after the timeout. Also automatically switches you back to Online when activity is detected.",
+    width = "full",
+		default = Parent.Defaults.afkTimerEnabled,
+	}
+
+	i = i + 1
+	optionsData[i] = {
+		type = "slider",
+		name = "AFK Timeout (s)",
+		getFunc = function() return Parent.SavedVars.afkTimeout end,
+		setFunc = function(value) Parent.SavedVars.afkTimeout = value end,
+		min = 30,
+		max = 1200,
+		step = 1,
+		clampInput = false,
+		decimals = 0,
+		autoSelect = true,
+		readOnly = false,
+		width = "full", -- or "half" (optional)
+		disabled = function() return not Parent.SavedVars.afkTimerEnabled end,
+		default = Parent.Defaults.afkTimeout,
 	}
 
 	controls[k] = {
@@ -233,27 +280,6 @@ function SDM:CreateSettingsPanel()
   optionsData[i] = {
 		type = "header",
 		name = "Misc.",
-	}
-
-	choicesValues = {
-		Parent.SharedGuildsSelection.all,
-		Parent.SharedGuildsSelection.fav,
-		Parent.SharedGuildsSelection.none,
-	}
-
-	i = i + 1
-	optionsData[i] = {
-		type = "dropdown",
-		name = "Shared Guild Info", -- or string id or function returning a string
-		choices = {"All", "Fav Only", "None"},
-		choicesValues = choicesValues, -- if specified, these values will get passed to setFunc instead (optional)
-		getFunc = function() return Parent.SavedVars.sharedGuilds end, -- if multiSelect is true the getFunc must return a table
-		setFunc = function(var) Parent.SavedVars.sharedGuilds = var end, -- if multiSelect is true the setFunc's var must be a table
-		tooltip = "Displays which guilds you share with the highlighted friend.",
-		width = "full", -- or "half" (optional)
-		scrollable = false, -- boolean or number, if set the dropdown will feature a scroll bar if there are a large amount of choices and limit the visible lines to the specified number or 10 if true is used (optional)
-		default = Parent.Defaults.sharedGuilds, -- default value or function that returns the default value (optional)
-		multiSelect = false, -- boolean or function returning a boolean. If set to true you can select multiple entries at the list (optional)
 	}
 
 	i = i + 1
