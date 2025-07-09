@@ -91,7 +91,6 @@ function SSF:Initialize()
 		favIconInheritColor = false,
 		favIconTexture = self.IconTextures[1],
 	}
-	self.currentCharIndex = nil
 
 	-- Saved variables initialization
 	self.SavedVars = ZO_SavedVars:NewAccountWide("StaticsSocialFeaturesAccountWideVars", self.varsVersion, nil, self.Defaults, GetWorldName())
@@ -130,6 +129,7 @@ function SSF:Initialize()
 
 	-- Update Icon from settings
 	self:UpdateFavIcon()
+	
 
 	-- Register Context Menu
 	self:FriendListContextMenu()
@@ -138,7 +138,6 @@ function SSF:Initialize()
 	EM:RegisterForEvent(self.addonName, EVENT_PLAYER_ACTIVATED, function(...) self:OnPlayerActivated(...) end)
 
 	-- Slash commands declarations
-	SLASH_COMMANDS["/ssf"] = function(...) self:CommandParse(...) end
 
 	-- Keybindings associations
 	
@@ -160,6 +159,7 @@ function SSF:UpdateFavIcon()
 	end
 	FLM:BuildMasterList()
 	FL:RefreshFilters()
+	self:DebugMsg("Fav icon updated.")
 end
 
 
@@ -232,21 +232,11 @@ Description:	Hooks into the logout and quit function to set character status if 
 function SSF:LogoutQuitHook()
 	function self:OnLogout()
 		self:DebugMsg("Logout/Quit prehook started.")
-		local i
-		if not self.currentCharIndex then
-			local _, _, _, _, _, _, id, _ = GetCharacterInfo(i)
-			for index, value in ipairs(self.SavedVars.Characters) do
-				if value.id == id then
-					self.currentCharIndex = index
-					i = index
-					break
-				end
-			end
-		else
-			i = self.currentCharIndex
+		local i = self:GetCharacterIndex()
 		end
 		if self.SavedVars.Characters[i].charOverride ~= self.PlayerStatus.disabled and self.SavedVars.Characters[i].charOverrideLogout then
 			SelectPlayerStatus(self.SavedVars.Characters[i].charOverride)
+			self:DebugMsg(zo_strformat("Player status set to <<1>>", self.SavedVars.Characters[i].charOverride))
 		end
 	end
 	ZO_PreHook('Logout', function() self:OnLogout() end)
@@ -262,6 +252,7 @@ Description:	Hooks into the friends message to allow only showing for fav friend
 ------------------------------------------------------------------------------------------------]]--
 function SSF:FriendMessageHook()
 	function self:OnFriendStatusChanged(eventCode, displayName, characterName, oldStatus, newStatus)
+		self:DebugMsg("Friend Message prehook started.")
 		if self.SavedVars.friendMsg == self.FriendMsgType.none then return end
 		if self.SavedVars.friendMsg == self.FriendMsgType.all or (self.SavedVars.friendMsg == self.FriendMsgType.fav and self.SavedVars.Favs[displayName]) then
 			CR:FormatAndAddChatMessage(eventCode, displayName, characterName, oldStatus, newStatus)
@@ -277,10 +268,11 @@ function SSF:FriendKeybindStripHook()
 Inputs:			  None
 Outputs:			None
 Description:	Hooks into the friends keybind strip to add the invite and whisper option for offline 
-							favs.
+							favs as well as the add/remove fav friend button.
 ------------------------------------------------------------------------------------------------]]--
 function SSF:FriendKeybindStripHook()
 	ZO_PostHook(FL, 'InitializeKeybindDescriptors', function(self_)
+		self:DebugMsg("Friend Keybind Strip prehook started.")
 		-- Whisper
 		self_.keybindStripDescriptor[1].visible = function()
 			if(self_.mouseOverRow and IsChatSystemAvailableForCurrentPlatform()) then
@@ -301,7 +293,15 @@ function SSF:FriendKeybindStripHook()
 		end
 		-- Add/Remove Fav
 		self_.keybindStripDescriptor[3] = {
-			name = "+/- Fav",
+			name = function()
+				if self_.mouseOverRow then
+					local data = ZO_ScrollList_GetData(self_.mouseOverRow)
+					if self.SavedVars.Favs[data.displayName] then
+						return "Remove Fav"
+					end
+				end
+				return "Add Fav"
+			end,
 			keybind = "UI_SHORTCUT_QUATERNARY",
 			callback = function()
 				if self_.mouseOverRow then
@@ -319,6 +319,7 @@ function SSF:FriendKeybindStripHook()
 				end
 				return false
 			end,
+			--icon = self.SavedVars.favIconTexture,
 		}
 	end)
 end
@@ -332,6 +333,7 @@ Description:	Hooks into the friends list to sort Fav friends to the top.
 ------------------------------------------------------------------------------------------------]]--
 function SSF:FriendListTooltipHook()
 	ZO_PostHook(ZO_SocialListKeyboard, 'DisplayName_OnMouseEnter', function(self_, control)
+		self:DebugMsg("Friend List Tooltip prehook started.")
 		if self.SavedVars.sharedGuilds == self.SharedGuildsSelection.none then return end
 		local row = control:GetParent()
     local data = ZO_ScrollList_GetData(row)
@@ -361,6 +363,7 @@ Description:	Adds an entry to the friends list context menu.
 ------------------------------------------------------------------------------------------------]]--
 function SSF:FriendListContextMenu()
 	local function AddItem(data)
+		self:DebugMsg("Friend List Context Menu started.")
 		local name = data.displayName
 		if self.SavedVars.Favs[name] then 
 			AddCustomMenuItem("Remove Fav Friend", function() self:RemoveFavFriend(name) end)
@@ -384,7 +387,7 @@ Description:	Adds the name to the Fav list.
 ------------------------------------------------------------------------------------------------]]--
 function SSF:AddFavFriend(name)
 	self.SavedVars.Favs[name] = true
-	--self:SendToChat(name .. " added to Favs.")
+	self:DebugMsg(zo_strformat("<<1>> added to Fav Friends.", name))
 	FLM:BuildMasterList()
 	FL:RefreshFilters()
 end
@@ -398,9 +401,28 @@ Description:	Removes the name from the Fav list.
 ------------------------------------------------------------------------------------------------]]--
 function SSF:RemoveFavFriend(name)
 	self.SavedVars.Favs[name] = nil
-	--self:SendToChat(name .. " removed from Favs.")
+	self:DebugMsg(zo_strformat("<<1>> removed from Fav Friends.", name))
 	FLM:BuildMasterList()
 	FL:RefreshFilters()
+end
+
+
+--[[------------------------------------------------------------------------------------------------
+function SSF:GetCharacterIndex()
+Inputs:			  None
+Outputs:			index 					- The index of the character
+Description:	Returns the index of the curent character from the saved vars table.
+------------------------------------------------------------------------------------------------]]--
+function SSF:GetCharacterIndex()
+	local index
+	local id = GetCurrentCharacterId()
+	for i, v in ipairs(self.SavedVars.Characters) do
+		if v.id == id then
+			index = i
+			break
+		end
+	end
+	return index
 end
 
 
@@ -418,17 +440,12 @@ function SSF:OnPlayerActivated(eventCode, initial)
 	self:DebugMsg("OnPlayerActivated event fired.")
 	--self:SendToChat(GetPlayerStatus())
 	if initial then
-		local i
-		local _, _, _, _, _, _, id, _ = GetCharacterInfo(i)
-		for index, value in ipairs(self.SavedVars.Characters) do
-			if value.id == id then
-				self.currentCharIndex = index
-				i = index
-				break
-			end
-		end
+		if self.initialized then self:DebugMsg("Initialized.") end
+		local i = self:GetCharacterIndex()
+		self:DebugMsg(zo_strformat("Character \"<<1>>\" (<<2>>) loaded.", self.SavedVars.Characters[i].name, self.SavedVars.Characters[i].id))
 		if self.SavedVars.Characters[i].charOverride ~= self.PlayerStatus.disabled and self.SavedVars.Characters[i].charOverrideLogin then
 			SelectPlayerStatus(self.SavedVars.Characters[i].charOverride)
+			self:DebugMsg(zo_strformat("Player status set to <<1>>", self.SavedVars.Characters[i].charOverride))
 		end
 	end
 end
@@ -478,28 +495,6 @@ function SSF:DebugMsg(inputString)
 	if not self.SavedVars.debugMode then return end
 	if inputString == false then return end
 	self:SendToChat("[DEBUG] " .. inputString)
-end
-
-
---[[------------------------------------------------------------------------------------------------
-function SSF:CommandParse(args)
-Inputs:			  args            - arguments from the slash command input.
-Outputs:			None
-Description:	Parses the command arguments into a table to execute certain functions.
-------------------------------------------------------------------------------------------------]]--
-function SSF:CommandParse(args)
-	local Options = {}
-	local searchResult = {string.match(args, "^(%S*)%s*(.-)$")}
-	for i,v in pairs(searchResult) do
-		if (v ~= nil and v~= "") then
-			Options[i] = string.lower(v)
-		end
-	end
-	if #Options == 0 then
-		self:SendToChat("No command entered.")
-	else
-		
-	end
 end
 
 
