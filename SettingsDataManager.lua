@@ -10,7 +10,6 @@ Libraries and Aliases
 ------------------------------------------------------------------------------------------------]]--
 local LAM2 = LibAddonMenu2
 local CM = CALLBACK_MANAGER
-local WM = WINDOW_MANAGER
 local FL = FRIENDS_LIST
 
 

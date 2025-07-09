@@ -115,8 +115,6 @@ function SSF:Initialize()
 	table.sort(NewData, function(a, b) return a.name < b.name end)
 	self.SavedVars.Characters = NewData
 
-	self:UpdateFavIcon()
-
 	-- Manager Initializations
 	self.SM = StaticsSocialFeaturesInitSettingsDataManager(self)
 	self.AFKM = StaticsSocialFeaturesInitAFKManager(self)
@@ -129,6 +127,9 @@ function SSF:Initialize()
 	self:FriendMessageHook()
 	self:FriendKeybindStripHook()
 	self:FriendListTooltipHook()
+
+	-- Update Icon from settings
+	self:UpdateFavIcon()
 
 	-- Register Context Menu
 	self:FriendListContextMenu()
@@ -157,7 +158,8 @@ function SSF:UpdateFavIcon()
 	else
 		self.favIcon = zo_strformat("|t<<1>>%:<<2>>%:<<3>>|t", self.SavedVars.favIconSize, self.SavedVars.favIconSize, self.SavedVars.favIconTexture)
 	end
-	FL:RefreshData()
+	FLM:BuildMasterList()
+	FL:RefreshFilters()
 end
 
 
@@ -230,7 +232,19 @@ Description:	Hooks into the logout and quit function to set character status if 
 function SSF:LogoutQuitHook()
 	function self:OnLogout()
 		self:DebugMsg("Logout/Quit prehook started.")
-		local i = self.currentCharIndex
+		local i
+		if not self.currentCharIndex then
+			local _, _, _, _, _, _, id, _ = GetCharacterInfo(i)
+			for index, value in ipairs(self.SavedVars.Characters) do
+				if value.id == id then
+					self.currentCharIndex = index
+					i = index
+					break
+				end
+			end
+		else
+			i = self.currentCharIndex
+		end
 		if self.SavedVars.Characters[i].charOverride ~= self.PlayerStatus.disabled and self.SavedVars.Characters[i].charOverrideLogout then
 			SelectPlayerStatus(self.SavedVars.Characters[i].charOverride)
 		end
@@ -285,37 +299,27 @@ function SSF:FriendKeybindStripHook()
 			end
 			return false
 		end
-		-- Add Fav
-		--[[self_.keybindStripDescriptor[3] = {
-			name = "+ Fav",
+		-- Add/Remove Fav
+		self_.keybindStripDescriptor[3] = {
+			name = "+/- Fav",
 			keybind = "UI_SHORTCUT_QUATERNARY",
 			callback = function()
-				local data = ZO_ScrollList_GetData(self_.mouseOverRow)
-				self:AddFavFriend(data.displayName)
+				if self_.mouseOverRow then
+					local data = ZO_ScrollList_GetData(self_.mouseOverRow)
+					if self.SavedVars.Favs[data.displayName] then
+						self:RemoveFavFriend(data.displayName)
+					else
+						self:AddFavFriend(data.displayName)
+					end
+				end
 			end,
 			visible = function()
-				local data = ZO_ScrollList_GetData(self_.mouseOverRow)
-				if not self.SavedVars.Favs[data.displayName] then
+				if self_.mouseOverRow then
 					return true
 				end
 				return false
 			end,
-		}]]--
-		-- Remove Fav
-		--[[self_.keybindStripDescriptor[4] = {
-			name = "Remove Fav",
-			keybind = "UI_SHORTCUT_QUATERNARY",
-			callback = function()
-				local data = ZO_ScrollList_GetData(self_.mouseOverRow)
-				self:RemoveFavFriend(data.displayName)
-			end,
-			visible = function()
-				if self.SavedVars.Favs[data.displayName] then
-					return true
-				end
-				return false
-			end
-		}]]--
+		}
 	end)
 end
 
@@ -413,7 +417,7 @@ Description:	Fired when the player character is available after loading screens 
 function SSF:OnPlayerActivated(eventCode, initial)
 	self:DebugMsg("OnPlayerActivated event fired.")
 	--self:SendToChat(GetPlayerStatus())
-	if not initial then
+	if initial then
 		local i
 		local _, _, _, _, _, _, id, _ = GetCharacterInfo(i)
 		for index, value in ipairs(self.SavedVars.Characters) do

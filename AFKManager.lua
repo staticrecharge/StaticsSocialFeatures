@@ -8,7 +8,6 @@ Description:    Controls the AFK timer and features
 --[[------------------------------------------------------------------------------------------------
 Libraries and Aliases
 ------------------------------------------------------------------------------------------------]]--
-local CM = CALLBACK_MANAGER
 local EM = EVENT_MANAGER
 
 
