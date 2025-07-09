@@ -233,7 +233,6 @@ function SSF:LogoutQuitHook()
 	function self:OnLogout()
 		self:DebugMsg("Logout/Quit prehook started.")
 		local i = self:GetCharacterIndex()
-		end
 		if self.SavedVars.Characters[i].charOverride ~= self.PlayerStatus.disabled and self.SavedVars.Characters[i].charOverrideLogout then
 			SelectPlayerStatus(self.SavedVars.Characters[i].charOverride)
 			self:DebugMsg(zo_strformat("Player status set to <<1>>", self.SavedVars.Characters[i].charOverride))
