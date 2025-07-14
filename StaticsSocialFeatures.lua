@@ -1,7 +1,7 @@
 --[[------------------------------------------------------------------------------------------------
 Title:					Static's Social Features
 Author:					Static_Recharge
-Version:				1.0.0
+Version:				1.0.1
 Description:		Adds specific social featues.
 ------------------------------------------------------------------------------------------------]]--
 
@@ -34,7 +34,7 @@ Description:	Initializes all of the variables, data managers, slash commands and
 function SSF:Initialize()
 	-- Static definitions
 	self.addonName = "StaticsSocialFeatures"
-	self.addonVersion = "1.0.0"
+	self.addonVersion = "1.0.1"
 	self.varsVersion = 2
 	self.author = "|CFF0000Static_Recharge|r"
 	self.chatPrefix = "|cFFFFFF[SSF]:|r "
@@ -211,6 +211,23 @@ Description:	Hooks into the friends list to sort Fav friends to the top.
 function SSF:FriendListSortHook()
 	ZO_PreHook(FL, 'SortScrollList', function(self_)
 		self:DebugMsg("Friend List Sort prehook started.")
+		if self_.currentSortOrder == ZO_SORT_ORDER_UP then
+			for i, friendData in ipairs(FLM.masterList) do
+				if self.SavedVars.Favs[friendData.displayName] then
+					friendData.favs = false -- ZO sort function sorts false entries before true ones
+				else
+					friendData.favs = true
+				end
+			end
+		else
+			for i, friendData in ipairs(FLM.masterList) do
+				if self.SavedVars.Favs[friendData.displayName] then
+					friendData.favs = true -- ZO sort function sorts false entries before true ones
+				else
+					friendData.favs = false
+				end
+			end
+		end
 		local prevSortKey = "status"
 		if self_.currentSortKey ~= "favs" then
 			prevSortKey = self_.currentSortKey
@@ -272,14 +289,6 @@ Description:	Hooks into the friends keybind strip to add the invite and whisper 
 function SSF:FriendKeybindStripHook()
 	ZO_PostHook(FL, 'InitializeKeybindDescriptors', function(self_)
 		self:DebugMsg("Friend Keybind Strip prehook started.")
-		-- Whisper
-		self_.keybindStripDescriptor[1].visible = function()
-			if(self_.mouseOverRow and IsChatSystemAvailableForCurrentPlatform()) then
-				local data = ZO_ScrollList_GetData(self_.mouseOverRow)
-				return data and data.hasCharacter and (data.online or self.SavedVars.Favs[data.displayName])
-			end
-			return false
-		end
 		-- Group Invite
 		self_.keybindStripDescriptor[2].visible = function()
 			if IsGroupModificationAvailable() and self_.mouseOverRow then
@@ -368,7 +377,6 @@ function SSF:FriendListContextMenu()
 			AddCustomMenuItem("Remove Fav Friend", function() self:RemoveFavFriend(name) end)
 			if data.status == self.PlayerStatus.offline then
 				AddCustomMenuItem("Invite to Group", function() GroupInviteByName(name) end)
-				AddCustomMenuItem("Whisper", function() StartChatInput("", CHAT_CHANNEL_WHISPER, name) end)
 			end
 		else
 			AddCustomMenuItem("Add Fav Friend", function() self:AddFavFriend(name) end)
