@@ -1,5 +1,5 @@
 --[[------------------------------------------------------------------------------------------------
-Title:          Settings Data Manager
+Title:          Settings Manager
 Author:         Static_Recharge
 Description:    Creates and controls the settings menu and related saved variables.
 ------------------------------------------------------------------------------------------------]]--
@@ -18,28 +18,28 @@ SDM Class Initialization
 SDM    - Object containing all functions, tables, variables,and constants.
   |-  Parent    - Reference to parent object.
 ------------------------------------------------------------------------------------------------]]--
-local SDM = ZO_InitializingObject:Subclass()
+local SM = ZO_InitializingObject:Subclass()
 
 
 --[[------------------------------------------------------------------------------------------------
-SDM:Initialize(Parent)
+SM:Initialize(Parent)
 Inputs:				Parent 					- The parent object containing other required information.  
 Outputs:			None
 Description:	Initializes all of the variables and tables.
 ------------------------------------------------------------------------------------------------]]--
-function SDM:Initialize(Parent)
+function SM:Initialize(Parent)
   self.Parent = Parent
   self:CreateSettingsPanel()
 end
 
 
 --[[------------------------------------------------------------------------------------------------
-SDM:CreateSettingsPanel()
+SM:CreateSettingsPanel()
 Inputs:				None  
 Outputs:			None
 Description:	Creates and registers the settings panel with LibAddonMenu.
 ------------------------------------------------------------------------------------------------]]--
-function SDM:CreateSettingsPanel()
+function SM:CreateSettingsPanel()
 	local Parent = self:GetParent()
 	local panelData = {
 		type = "panel",
@@ -102,7 +102,7 @@ function SDM:CreateSettingsPanel()
 		choices = {"All", "Fav Only", "None"},
 		choicesValues = choicesValues, -- if specified, these values will get passed to setFunc instead (optional)
 		getFunc = function() return Parent.SavedVars.friendMsg end, -- if multiSelect is true the getFunc must return a table
-		setFunc = function(var) Parent.SavedVars.friendMsg = var end, -- if multiSelect is true the setFunc's var must be a table
+		setFunc = function(var) Parent.SavedVars.friendMsg = var Parent:FriendMessageHook() end, -- if multiSelect is true the setFunc's var must be a table
 		tooltip = "Control which friend status messages are displayed.",
 		width = "full", -- or "half" (optional)
 		scrollable = false, -- boolean or number, if set the dropdown will feature a scroll bar if there are a large amount of choices and limit the visible lines to the specified number or 10 if true is used (optional)
@@ -182,7 +182,18 @@ function SDM:CreateSettingsPanel()
 	i = i + 1
 	optionsData[i] = {
 		type = "checkbox",
-    name = "AFK Timeout Enabled",
+    name = "Offline Notice",
+    getFunc = function() return Parent.SavedVars.offlineNotice end,
+    setFunc = function(value) Parent.SavedVars.offlineNotice = value end,
+    tooltip = "Notifies you on login if you're set to offline.",
+    width = "full",
+		default = Parent.Defaults.offlineNotice,
+	}
+
+	i = i + 1
+	optionsData[i] = {
+		type = "checkbox",
+    name = "AFK Timeout",
     getFunc = function() return Parent.SavedVars.afkTimerEnabled end,
     setFunc = function(value) Parent.SavedVars.afkTimerEnabled = value if value == true then Parent.AFKM:StartTimerAgain() end end,
     tooltip = "If enabled, switches you to Away after the timeout. Also automatically switches you back to Online when activity is detected.",
@@ -208,18 +219,68 @@ function SDM:CreateSettingsPanel()
 		default = Parent.Defaults.afkTimeout,
 	}
 
-	controls[k] = {
-		type = "description",
-    text = "If enabled, forces your player status for the specific characters.",
-    width = "full",
-	}
-
 	choicesValues = {
 		Parent.PlayerStatus.disabled,
 		Parent.PlayerStatus.online,
 		Parent.PlayerStatus.away,
 		Parent.PlayerStatus.dnd,
 		Parent.PlayerStatus.offline,
+	}
+
+	i = i + 1
+	optionsData[i] = {
+		type = "checkbox",
+		name = "Account Wide Override",
+		getFunc = function() return Parent.SavedVars.accountOverrideEnabled end,
+		setFunc = function(value) Parent.SavedVars.accountOverrideEnabled = value end,
+		width = "Full",
+		tooltip = "When enabled, all characters will use the same settings. Disable to set indivually for each character.",
+		default = Parent.Defaults.accountOverrideEnabled,
+	}
+
+	i = i + 1
+	optionsData[i] = {
+		type = "dropdown",
+		name = "Account Wide Status", -- or string id or function returning a string
+		choices = {"Disabled", "Online", "Away", "Do Not Disturb", "Offline"},
+		choicesValues = choicesValues, -- if specified, these values will get passed to setFunc instead (optional)
+		getFunc = function() return Parent.SavedVars.accountOverride end, -- if multiSelect is true the getFunc must return a table
+		setFunc = function(var) Parent.SavedVars.accountOverride = var end, -- if multiSelect is true the setFunc's var must be a table
+		width = "full", -- or "half" (optional)
+		scrollable = false, -- boolean or number, if set the dropdown will feature a scroll bar if there are a large amount of choices and limit the visible lines to the specified number or 10 if true is used (optional)
+		default = Parent.Defaults.accountOverride, -- default value or function that returns the default value (optional)
+		multiSelect = false, -- boolean or function returning a boolean. If set to true you can select multiple entries at the list (optional)
+		disabled = function() return not Parent.SavedVars.accountOverrideEnabled end,
+	}
+
+	i = i + 1
+	optionsData[i] = {
+		type = "checkbox",
+		name = "Login",
+		getFunc = function() return Parent.SavedVars.accountOverrideLogin end,
+		setFunc = function(value) Parent.SavedVars.accountOverrideLogin = value end,
+		width = "half",
+		tooltip = "Force the selected status on character login.",
+		disabled = function() return Parent.SavedVars.accountOverride == Parent.PlayerStatus.disabled or not Parent.SavedVars.accountOverrideEnabled end,
+		default = Parent.Defaults.accountOverrideLogin,
+	}
+
+	i = i + 1
+	optionsData[i] = {
+		type = "checkbox",
+		name = "Logout",
+		getFunc = function() return Parent.SavedVars.accountOverrideLogout end,
+		setFunc = function(value) Parent.SavedVars.accountOverrideLogout = value end,
+		width = "half",
+		tooltip = "Force the selected status on character logout.",
+		disabled = function() return Parent.SavedVars.accountOverride == Parent.PlayerStatus.disabled or not Parent.SavedVars.accountOverrideEnabled end,
+		default = Parent.Defaults.accountOverrideLogout,
+	}
+
+	controls[k] = {
+		type = "description",
+    text = "If enabled, forces your player status for the specific characters.",
+    width = "full",
 	}
 
 	for key, char in ipairs(Parent.SavedVars.Characters) do
@@ -246,6 +307,7 @@ function SDM:CreateSettingsPanel()
 			getFunc = function() return char.charOverrideLogin end,
 			setFunc = function(value) char.charOverrideLogin = value end,
 			width = "half",
+			tooltip = "Force the selected status on character login.",
 			disabled = function() return char.charOverride == Parent.PlayerStatus.disabled end,
 			default = Parent.Defaults.charOverrideLogin,
 		}
@@ -257,6 +319,7 @@ function SDM:CreateSettingsPanel()
 			getFunc = function() return char.charOverrideLogout end,
 			setFunc = function(value) char.charOverrideLogout = value end,
 			width = "half",
+			tooltip = "Force the selected status on character logout.",
 			disabled = function() return char.charOverride == Parent.PlayerStatus.disabled end,
 			default = Parent.Defaults.charOverrideLogout,
 		}
@@ -271,8 +334,10 @@ function SDM:CreateSettingsPanel()
 	i = i + 1
 	optionsData[i] = {
 		type = "submenu",
-		name = "Force Character Status",
+		name = "Character Status",
 		controls = controls,
+		disabled = function() return Parent.SavedVars.accountOverrideEnabled end,
+		tooltip = function() if Parent.SavedVars.accountOverrideEnabled then return "Disable Account Wide Overide to select per character status." end end,
 	}
 
   i = i + 1
@@ -284,7 +349,7 @@ function SDM:CreateSettingsPanel()
 	i = i + 1
 	optionsData[i] = {
 		type = "checkbox",
-    name = "Chat Messages Enabled",
+    name = "Chat Messages",
     getFunc = function() return Parent.SavedVars.chatMsgEnabled end,
     setFunc = function(value) Parent.SavedVars.chatMsgEnabled = value end,
     tooltip = "Disables ALL chat messages from this add-on.",
@@ -298,9 +363,10 @@ function SDM:CreateSettingsPanel()
     name = "Debugging Mode",
     getFunc = function() return Parent.SavedVars.debugMode end,
     setFunc = function(value) Parent.SavedVars.debugMode = value end,
-    tooltip = "Turns on extra messages for the purposes of debugging. Not intended for normal use.",
+    tooltip = "Turns on extra messages for the purposes of debugging. Not intended for normal use. Must have chat messages enabled.",
     width = "half",
 		default = Parent.Defaults.debugMode,
+		disabled = not Parent.SavedVars.chatMsgEnabled,
 	}
 
 	local function LAMPanelCreated(panel)
@@ -323,34 +389,34 @@ end
 
 
 --[[------------------------------------------------------------------------------------------------
-SDM:Update()
+SM:Update()
 Inputs:				None
 Outputs:			None
 Description:	Updates the settings panel in LibAddonMenu.
 ------------------------------------------------------------------------------------------------]]--
-function SDM:Update()
+function SM:Update()
 	local Parent = self:GetParent()
 	if not Parent.LAMReady then return end
 end
 
 
 --[[------------------------------------------------------------------------------------------------
-SDM:GetParent()
+SM:GetParent()
 Inputs:				None
 Outputs:			Parent          - The parent object of this object.
 Description:	Returns the parent object of this object for reference to parent variables.
 ------------------------------------------------------------------------------------------------]]--
-function SDM:GetParent()
+function SM:GetParent()
   return self.Parent
 end
 
 
 --[[------------------------------------------------------------------------------------------------
-StaticsRecruiterInitSettingsDataManager(Parent)
+StaticsRecruiterInitSettingsManager(Parent)
 Inputs:				Parent          - The parent object of the object to be created.
 Outputs:			SDM             - The new object created.
 Description:	Global function to create a new instance of this object.
 ------------------------------------------------------------------------------------------------]]--
-function StaticsSocialFeaturesInitSettingsDataManager(Parent)
-	return SDM:New(Parent)
+function StaticsSocialFeaturesInitSettingsManager(Parent)
+	return SM:New(Parent)
 end

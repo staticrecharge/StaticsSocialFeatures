@@ -1,7 +1,7 @@
 --[[------------------------------------------------------------------------------------------------
 Title:					Static's Social Features
 Author:					Static_Recharge
-Version:				1.0.1
+Version:				1.0.3
 Description:		Adds specific social featues.
 ------------------------------------------------------------------------------------------------]]--
 
@@ -29,13 +29,14 @@ local SSF = ZO_InitializingObject:Subclass()
 SSF:Initialize()
 Inputs:				None
 Outputs:			None
-Description:	Initializes all of the variables, data managers, slash commands and event callbacks.
+Description:	Initializes all of the variables, object managers, slash commands and main event
+							callbacks.
 ------------------------------------------------------------------------------------------------]]--
 function SSF:Initialize()
 	-- Static definitions
 	self.addonName = "StaticsSocialFeatures"
-	self.addonVersion = "1.0.1"
-	self.varsVersion = 2
+	self.addonVersion = "1.0.3"
+	self.varsVersion = 3
 	self.author = "|CFF0000Static_Recharge|r"
 	self.chatPrefix = "|cFFFFFF[SSF]:|r "
 	self.chatTextColor = "|cFFFFFF"
@@ -80,6 +81,10 @@ function SSF:Initialize()
 		charOverride = self.PlayerStatus.disabled,
 		charOverrideLogin = false,
 		charOverrideLogout = false,
+		accountOverride = self.PlayerStatus.disabled,
+		accountOverrideLogin = false,
+		accountOverrideLogout = false,
+		accountOverrideEnabled = true,
 		afkTimerEnabled = true,
 		afkTimeout = 600, -- s
 		Characters = {},
@@ -90,10 +95,13 @@ function SSF:Initialize()
 		favIconSize = 90, -- %
 		favIconInheritColor = false,
 		favIconTexture = self.IconTextures[1],
+		settingsChanged = true,
+		offlineNotice = true,
 	}
+	self.chatRouterEventRedirected = false
 
 	-- Saved variables initialization
-	self.SavedVars = ZO_SavedVars:NewAccountWide("StaticsSocialFeaturesAccountWideVars", self.varsVersion, nil, self.Defaults, GetWorldName())
+	self.SavedVars = ZO_SavedVars:NewAccountWide("StaticsSocialFeaturesAccountWideVars", self.varsVersion, nil, self.Defaults, nil)
 	-- Update Character list (preserve any settings)
 	local NewData = {}
 	for i=1, GetNumCharacters() do
@@ -115,7 +123,7 @@ function SSF:Initialize()
 	self.SavedVars.Characters = NewData
 
 	-- Manager Initializations
-	self.SM = StaticsSocialFeaturesInitSettingsDataManager(self)
+	self.SM = StaticsSocialFeaturesInitSettingsManager(self)
 	self.AFKM = StaticsSocialFeaturesInitAFKManager(self)
 
 	-- ZO Hooks
@@ -129,7 +137,6 @@ function SSF:Initialize()
 
 	-- Update Icon from settings
 	self:UpdateFavIcon()
-	
 
 	-- Register Context Menu
 	self:FriendListContextMenu()
@@ -138,9 +145,10 @@ function SSF:Initialize()
 	EM:RegisterForEvent(self.addonName, EVENT_PLAYER_ACTIVATED, function(...) self:OnPlayerActivated(...) end)
 
 	-- Slash commands declarations
+	-- Menu slash command is defined in SettingsManager.lua
 
 	-- Keybindings associations
-	
+
 	self.initialized = true
 end
 
@@ -167,7 +175,7 @@ end
 function SSF:FriendListHook()
 Inputs:			  None
 Outputs:			None
-Description:	Hooks into the friends list manager to add Fav tag to all entries
+Description:	Hooks into the friends list manager to add Fav tag to all entries as required.
 ------------------------------------------------------------------------------------------------]]--
 function SSF:FriendListHook()
 	ZO_PostHook(FLM, 'BuildMasterList', function(self_)
@@ -249,10 +257,15 @@ Description:	Hooks into the logout and quit function to set character status if 
 function SSF:LogoutQuitHook()
 	function self:OnLogout()
 		self:DebugMsg("Logout/Quit prehook started.")
-		local i = self:GetCharacterIndex()
-		if self.SavedVars.Characters[i].charOverride ~= self.PlayerStatus.disabled and self.SavedVars.Characters[i].charOverrideLogout then
-			SelectPlayerStatus(self.SavedVars.Characters[i].charOverride)
-			self:DebugMsg(zo_strformat("Player status set to <<1>>", self.SavedVars.Characters[i].charOverride))
+		if self.SavedVars.accountOverrideEnabled and self.SavedVars.accountOverrideLogout then
+			SelectPlayerStatus(self.SavedVars.accountOverride)
+			self:DebugMsg(zo_strformat("Player status set to <<1>>", self.SavedVars.accountOverride))
+		else
+			local i = self:GetCharacterIndex()
+			if self.SavedVars.Characters[i].charOverride ~= self.PlayerStatus.disabled and self.SavedVars.Characters[i].charOverrideLogout then
+				SelectPlayerStatus(self.SavedVars.Characters[i].charOverride)
+				self:DebugMsg(zo_strformat("Player status set to <<1>>", self.SavedVars.Characters[i].charOverride))
+			end
 		end
 	end
 	ZO_PreHook('Logout', function() self:OnLogout() end)
@@ -274,8 +287,15 @@ function SSF:FriendMessageHook()
 			CR:FormatAndAddChatMessage(eventCode, displayName, characterName, oldStatus, newStatus)
 		end
 	end
-	EM:UnregisterForEvent("ChatRouter", EVENT_FRIEND_PLAYER_STATUS_CHANGED)
-	EM:RegisterForEvent("ChatRouter", EVENT_FRIEND_PLAYER_STATUS_CHANGED, function(...) self:OnFriendStatusChanged(...) end)
+	if self.SavedVars.friendMsg ~= self.FriendMsgType.none and self.chatRouterEventRedirected == true then
+		EM:UnregisterForEvent("ChatRouter", EVENT_FRIEND_PLAYER_STATUS_CHANGED)
+		EM:RegisterForEvent("ChatRouter", EVENT_FRIEND_PLAYER_STATUS_CHANGED, function(...) self:OnFriendStatusChanged(...) end)
+		self.chatRouterEventRedirected = true
+	elseif self.chatRouterEventRedirected == true then
+		EM:UnregisterForEvent("ChatRouter", EVENT_FRIEND_PLAYER_STATUS_CHANGED)
+		EM:RegisterForEvent("ChatRouter", EVENT_FRIEND_PLAYER_STATUS_CHANGED, function(...) CR:FormatAndAddChatMessage(...) end)
+		self.chatRouterEventRedirected = false
+	end
 end
 
 
@@ -377,12 +397,12 @@ function SSF:FriendListContextMenu()
 			AddCustomMenuItem("Remove Fav Friend", function() self:RemoveFavFriend(name) end)
 			if data.status == self.PlayerStatus.offline then
 				AddCustomMenuItem("Invite to Group", function() GroupInviteByName(name) end)
+			else
+				AddCustomMenuItem("Add Fav Friend", function() self:AddFavFriend(name) end)
 			end
-		else
-			AddCustomMenuItem("Add Fav Friend", function() self:AddFavFriend(name) end)
 		end
-	end
-	LCM:RegisterFriendsListContextMenu(AddItem, LCM.CATEGORY_LATE)
+		LCM:RegisterFriendsListContextMenu(AddItem, LCM.CATEGORY_LATE)
+	end 
 end
 
 
@@ -434,7 +454,7 @@ end
 
 
 --[[------------------------------------------------------------------------------------------------
-function OnPlayerActivated(eventCode, initial)
+function SSF:OnPlayerActivated(eventCode, initial)
 Inputs:				eventCode				- Internal ZOS event code, not used here.
 							initial					- Indicates if this is the first activation from log-in. From 
 															experience this is actually opposite what it means.
@@ -445,15 +465,36 @@ Description:	Fired when the player character is available after loading screens 
 ------------------------------------------------------------------------------------------------]]--
 function SSF:OnPlayerActivated(eventCode, initial)
 	self:DebugMsg("OnPlayerActivated event fired.")
-	--self:SendToChat(GetPlayerStatus())
-	if initial then
+	self:DebugMsg(zo_strformat("Player status is <<1>>", GetPlayerStatus()))
+	if not initial then
+		self:SettingsChanged()
+		if self.SavedVars.offlineNotice and GetPlayerStatus() == self.PlayerStatus.offline then self:SendToChat("You are set to offline.") end
 		if self.initialized then self:DebugMsg("Initialized.") end
 		local i = self:GetCharacterIndex()
 		self:DebugMsg(zo_strformat("Character \"<<1>>\" (<<2>>) loaded.", self.SavedVars.Characters[i].name, self.SavedVars.Characters[i].id))
-		if self.SavedVars.Characters[i].charOverride ~= self.PlayerStatus.disabled and self.SavedVars.Characters[i].charOverrideLogin then
-			SelectPlayerStatus(self.SavedVars.Characters[i].charOverride)
-			self:DebugMsg(zo_strformat("Player status set to <<1>>", self.SavedVars.Characters[i].charOverride))
+		if self.SavedVars.accountOverrideEnabled and self.SavedVars.accountOverrideLogin then
+			SelectPlayerStatus(self.SavedVars.accountOverride)
+			self:DebugMsg(zo_strformat("Player status set to <<1>>", self.SavedVars.accountOverride))
+		else
+			if self.SavedVars.Characters[i].charOverride ~= self.PlayerStatus.disabled and self.SavedVars.Characters[i].charOverrideLogin then
+				SelectPlayerStatus(self.SavedVars.Characters[i].charOverride)
+				self:DebugMsg(zo_strformat("Player status set to <<1>>", self.SavedVars.Characters[i].charOverride))
+			end
 		end
+	end
+end
+
+
+--[[------------------------------------------------------------------------------------------------
+function SSF:SettingsChanged()
+Inputs:				None
+Outputs:			None
+Description:	Fired when the player first loads in after a settings reset is forced
+------------------------------------------------------------------------------------------------]]--
+function SSF:SettingsChanged()
+	if self.SavedVars.settingsChanged then 
+		self:SendToChat(zo_strformat("Static's Social Features updated to <<1>>. Settings have been reset.", self.addonVersion))
+		self.SavedVars.settingsChanged = false
 	end
 end
 
