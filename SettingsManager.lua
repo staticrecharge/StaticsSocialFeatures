@@ -62,7 +62,7 @@ function SM:CreateSettingsPanel()
 
 	optionsData[i] = {
 		type = "header",
-		name = "Fav Friends",
+		name = "Friends List",
 	}
 
 	i = i + 1
@@ -102,12 +102,13 @@ function SM:CreateSettingsPanel()
 		choices = {"All", "Fav Only", "None"},
 		choicesValues = choicesValues, -- if specified, these values will get passed to setFunc instead (optional)
 		getFunc = function() return Parent.SavedVars.friendMsg end, -- if multiSelect is true the getFunc must return a table
-		setFunc = function(var) Parent.SavedVars.friendMsg = var Parent:FriendMessageHook() end, -- if multiSelect is true the setFunc's var must be a table
+		setFunc = function(var) Parent.SavedVars.friendMsg = var end, -- if multiSelect is true the setFunc's var must be a table
 		tooltip = "Control which friend status messages are displayed.",
 		width = "full", -- or "half" (optional)
 		scrollable = false, -- boolean or number, if set the dropdown will feature a scroll bar if there are a large amount of choices and limit the visible lines to the specified number or 10 if true is used (optional)
 		default = Parent.Defaults.friendMsg, -- default value or function that returns the default value (optional)
 		multiSelect = false, -- boolean or function returning a boolean. If set to true you can select multiple entries at the list (optional)
+		requiresReload = true, -- boolean, if set to true, the warning text will contain a notice that changes are only applied after an UI reload and any change to the value will make the "Apply Settings" button appear on the panel which will reload the UI when pressed (optional)
 	}
 
 	choicesValues = {
@@ -128,6 +129,27 @@ function SM:CreateSettingsPanel()
 		width = "full", -- or "half" (optional)
 		scrollable = false, -- boolean or number, if set the dropdown will feature a scroll bar if there are a large amount of choices and limit the visible lines to the specified number or 10 if true is used (optional)
 		default = Parent.Defaults.sharedGuilds, -- default value or function that returns the default value (optional)
+		multiSelect = false, -- boolean or function returning a boolean. If set to true you can select multiple entries at the list (optional)
+	}
+
+	choicesValues = {
+		Parent.GroupInviteSelection.all,
+		Parent.GroupInviteSelection.fav,
+		Parent.GroupInviteSelection.none,
+	}
+
+	i = i + 1
+	optionsData[i] = {
+		type = "dropdown",
+		name = "Offline Group Invite", -- or string id or function returning a string
+		choices = {"All", "Fav Only", "None"},
+		choicesValues = choicesValues, -- if specified, these values will get passed to setFunc instead (optional)
+		getFunc = function() return Parent.SavedVars.groupInvite end, -- if multiSelect is true the getFunc must return a table
+		setFunc = function(var) Parent.SavedVars.groupInvite = var end, -- if multiSelect is true the setFunc's var must be a table
+		tooltip = "Allows you to attempt to send group invite requests to friends showing as offline.",
+		width = "full", -- or "half" (optional)
+		scrollable = false, -- boolean or number, if set the dropdown will feature a scroll bar if there are a large amount of choices and limit the visible lines to the specified number or 10 if true is used (optional)
+		default = Parent.Defaults.groupInvite, -- default value or function that returns the default value (optional)
 		multiSelect = false, -- boolean or function returning a boolean. If set to true you can select multiple entries at the list (optional)
 	}
 
@@ -185,9 +207,20 @@ function SM:CreateSettingsPanel()
     name = "Offline Notice",
     getFunc = function() return Parent.SavedVars.offlineNotice end,
     setFunc = function(value) Parent.SavedVars.offlineNotice = value end,
-    tooltip = "Notifies you on login if you're set to offline.",
+    tooltip = "Notifies you on login if you're set to Offline.",
     width = "full",
 		default = Parent.Defaults.offlineNotice,
+	}
+
+	i = i + 1
+	optionsData[i] = {
+		type = "checkbox",
+    name = "Whisper Notice",
+    getFunc = function() return Parent.SavedVars.whisperNotice end,
+    setFunc = function(value) Parent.SavedVars.whisperNotice = value end,
+    tooltip = "Notifies you when you send a whisper and are offline.",
+    width = "full",
+		default = Parent.Defaults.whisperNotice,
 	}
 
 	i = i + 1

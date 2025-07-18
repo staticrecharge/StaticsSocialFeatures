@@ -36,7 +36,7 @@ function SSF:Initialize()
 	-- Static definitions
 	self.addonName = "StaticsSocialFeatures"
 	self.addonVersion = "1.0.3"
-	self.varsVersion = 3
+	self.varsVersion = 2 -- SHOULD BE 2
 	self.author = "|CFF0000Static_Recharge|r"
 	self.chatPrefix = "|cFFFFFF[SSF]:|r "
 	self.chatTextColor = "|cFFFFFF"
@@ -54,6 +54,11 @@ function SSF:Initialize()
 		none = 3,
 	}
 	self.SharedGuildsSelection = {
+		all = 1,
+		fav = 2,
+		none = 3,
+	}
+	self.GroupInviteSelection = {
 		all = 1,
 		fav = 2,
 		none = 3,
@@ -97,6 +102,8 @@ function SSF:Initialize()
 		favIconTexture = self.IconTextures[1],
 		settingsChanged = true,
 		offlineNotice = true,
+		groupInvite = self.GroupInviteSelection.all,
+		whisperNotice = true,
 	}
 	self.chatRouterEventRedirected = false
 
@@ -143,6 +150,7 @@ function SSF:Initialize()
 
 	-- Event Registrations
 	EM:RegisterForEvent(self.addonName, EVENT_PLAYER_ACTIVATED, function(...) self:OnPlayerActivated(...) end)
+	EM:RegisterForEvent(self.addonName, EVENT_CHAT_MESSAGE_CHANNEL, function(...) self:OnEventChatMessageChannel(...) end)
 
 	-- Slash commands declarations
 	-- Menu slash command is defined in SettingsManager.lua
@@ -199,7 +207,7 @@ Description:	Hooks into the friends list manager to add the icon for Fav friends
 ------------------------------------------------------------------------------------------------]]--
 function SSF:FriendEntryHook()
 	ZO_PostHook(FLM, 'SetupEntry', function(self_, control, data, selected)
-		self:DebugMsg("Friend Listy Entry prehook started.")
+		--self:DebugMsg("Friend Listy Entry prehook started.")
 		local displayNameLabel = control:GetNamedChild("DisplayName")
 		if displayNameLabel then
 			if self.SavedVars.Favs[data.displayName] then
@@ -287,14 +295,10 @@ function SSF:FriendMessageHook()
 			CR:FormatAndAddChatMessage(eventCode, displayName, characterName, oldStatus, newStatus)
 		end
 	end
-	if self.SavedVars.friendMsg ~= self.FriendMsgType.none and self.chatRouterEventRedirected == true then
+	if self.SavedVars.friendMsg ~= self.FriendMsgType.none and self.chatRouterEventRedirected == false then
 		EM:UnregisterForEvent("ChatRouter", EVENT_FRIEND_PLAYER_STATUS_CHANGED)
 		EM:RegisterForEvent("ChatRouter", EVENT_FRIEND_PLAYER_STATUS_CHANGED, function(...) self:OnFriendStatusChanged(...) end)
 		self.chatRouterEventRedirected = true
-	elseif self.chatRouterEventRedirected == true then
-		EM:UnregisterForEvent("ChatRouter", EVENT_FRIEND_PLAYER_STATUS_CHANGED)
-		EM:RegisterForEvent("ChatRouter", EVENT_FRIEND_PLAYER_STATUS_CHANGED, function(...) CR:FormatAndAddChatMessage(...) end)
-		self.chatRouterEventRedirected = false
 	end
 end
 
@@ -313,7 +317,7 @@ function SSF:FriendKeybindStripHook()
 		self_.keybindStripDescriptor[2].visible = function()
 			if IsGroupModificationAvailable() and self_.mouseOverRow then
 				local data = ZO_ScrollList_GetData(self_.mouseOverRow)
-				if data and data.hasCharacter and (data.online or self.SavedVars.Favs[data.displayName]) then
+				if data and data.hasCharacter and (data.online or (self.SavedVars.Favs[data.displayName] and self.SavedVars.groupInvite ~= self.GroupInviteSelection.none) or self.SavedVars.groupInvite == self.GroupInviteSelection.all) then
 					return true
 				end
 			end
@@ -361,7 +365,7 @@ Description:	Hooks into the friends list to sort Fav friends to the top.
 ------------------------------------------------------------------------------------------------]]--
 function SSF:FriendListTooltipHook()
 	ZO_PostHook(ZO_SocialListKeyboard, 'DisplayName_OnMouseEnter', function(self_, control)
-		self:DebugMsg("Friend List Tooltip prehook started.")
+		--self:DebugMsg("Friend List Tooltip prehook started.")
 		if self.SavedVars.sharedGuilds == self.SharedGuildsSelection.none then return end
 		local row = control:GetParent()
     local data = ZO_ScrollList_GetData(row)
@@ -395,14 +399,17 @@ function SSF:FriendListContextMenu()
 		local name = data.displayName
 		if self.SavedVars.Favs[name] then 
 			AddCustomMenuItem("Remove Fav Friend", function() self:RemoveFavFriend(name) end)
-			if data.status == self.PlayerStatus.offline then
+			if data.status == self.PlayerStatus.offline and self.SavedVars.groupInvite ~= self.GroupInviteSelection.none then
 				AddCustomMenuItem("Invite to Group", function() GroupInviteByName(name) end)
-			else
-				AddCustomMenuItem("Add Fav Friend", function() self:AddFavFriend(name) end)
+			end
+		else
+			AddCustomMenuItem("Add Fav Friend", function() self:AddFavFriend(name) end)
+			if data.status == self.PlayerStatus.offline and self.SavedVars.groupInvite == self.GroupInviteSelection.all then
+				AddCustomMenuItem("Invite to Group", function() GroupInviteByName(name) end)
 			end
 		end
-		LCM:RegisterFriendsListContextMenu(AddItem, LCM.CATEGORY_LATE)
-	end 
+	end
+	LCM:RegisterFriendsListContextMenu(AddItem, LCM.CATEGORY_LATE)
 end
 
 
@@ -481,6 +488,27 @@ function SSF:OnPlayerActivated(eventCode, initial)
 				self:DebugMsg(zo_strformat("Player status set to <<1>>", self.SavedVars.Characters[i].charOverride))
 			end
 		end
+	end
+end
+
+
+--[[------------------------------------------------------------------------------------------------
+function SSF:OnEventChatMessageChannel(eventCode, channelType, fromName, text, isCustomerService, fromDisplayName)
+Inputs:				eventCode				- Internal ZOS event code, not used here.
+							channelType			- Global Constant channelType (using CHAT_CHANNEL_WHISPER_SENT)
+							fromName  			- Character name of the sender
+							text 						- body of the message
+							isCustomerService- boolean if the message is from customer service
+							fromDisplayName	- @name of the sender
+Outputs:			None
+Description:	Fired when there is a chat message. Checking for outgoing whispers and notifying if
+							needed.
+------------------------------------------------------------------------------------------------]]--
+function SSF:OnEventChatMessageChannel(eventCode, channelType, fromName, text, isCustomerService, fromDisplayName)
+	if channelType ~= CHAT_CHANNEL_WHISPER_SENT then return end
+	self:DebugMsg("OnEventChatMessageChannel event fired.")
+	if GetPlayerStatus() == self.PlayerStatus.offline and self.SavedVars.whisperNotice then
+		self:SendToChat("You are set to offline and cannot receive replies to whispers.")
 	end
 end
 
