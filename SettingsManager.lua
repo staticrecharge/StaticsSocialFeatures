@@ -55,7 +55,6 @@ function SM:CreateSettingsPanel()
 	}
 
   local optionsData = {}
-	local choicesValues = {}
 	local controls = {}
 	local i = 1
 	local k = 1
@@ -89,18 +88,12 @@ function SM:CreateSettingsPanel()
 		default = Parent.Defaults.favFriendsTop,
 	}
 
-	choicesValues = {
-		Parent.FriendMsgType.all,
-		Parent.FriendMsgType.fav,
-		Parent.FriendMsgType.none,
-	}
-
 	i = i + 1
 	optionsData[i] = {
 		type = "dropdown",
 		name = "Friend Status Messages", -- or string id or function returning a string
-		choices = {"All", "Fav Only", "None"},
-		choicesValues = choicesValues, -- if specified, these values will get passed to setFunc instead (optional)
+		choices = self:GetKeys(Parent.FriendMsgType), --{"All", "Fav Only", "None"},
+		choicesValues = self:GetValues(Parent.FriendMsgType), -- if specified, these values will get passed to setFunc instead (optional)
 		getFunc = function() return Parent.SavedVars.friendMsg end, -- if multiSelect is true the getFunc must return a table
 		setFunc = function(var) Parent.SavedVars.friendMsg = var end, -- if multiSelect is true the setFunc's var must be a table
 		tooltip = "Control which friend status messages are displayed.",
@@ -111,18 +104,12 @@ function SM:CreateSettingsPanel()
 		requiresReload = true, -- boolean, if set to true, the warning text will contain a notice that changes are only applied after an UI reload and any change to the value will make the "Apply Settings" button appear on the panel which will reload the UI when pressed (optional)
 	}
 
-	choicesValues = {
-		Parent.SharedGuildsSelection.all,
-		Parent.SharedGuildsSelection.fav,
-		Parent.SharedGuildsSelection.none,
-	}
-
 	i = i + 1
 	optionsData[i] = {
 		type = "dropdown",
 		name = "Shared Guild Info", -- or string id or function returning a string
-		choices = {"All", "Fav Only", "None"},
-		choicesValues = choicesValues, -- if specified, these values will get passed to setFunc instead (optional)
+		choices = self:GetKeys(Parent.SharedGuildsSelection),
+		choicesValues = self:GetValues(Parent.SharedGuildsSelection), -- if specified, these values will get passed to setFunc instead (optional)
 		getFunc = function() return Parent.SavedVars.sharedGuilds end, -- if multiSelect is true the getFunc must return a table
 		setFunc = function(var) Parent.SavedVars.sharedGuilds = var end, -- if multiSelect is true the setFunc's var must be a table
 		tooltip = "Displays which guilds you share with the highlighted friend.",
@@ -132,18 +119,12 @@ function SM:CreateSettingsPanel()
 		multiSelect = false, -- boolean or function returning a boolean. If set to true you can select multiple entries at the list (optional)
 	}
 
-	choicesValues = {
-		Parent.GroupInviteSelection.all,
-		Parent.GroupInviteSelection.fav,
-		Parent.GroupInviteSelection.none,
-	}
-
 	i = i + 1
 	optionsData[i] = {
 		type = "dropdown",
 		name = "Offline Group Invite", -- or string id or function returning a string
-		choices = {"All", "Fav Only", "None"},
-		choicesValues = choicesValues, -- if specified, these values will get passed to setFunc instead (optional)
+		choices = self:GetKeys(Parent.GroupInviteSelection),
+		choicesValues = self:GetValues(Parent.GroupInviteSelection), -- if specified, these values will get passed to setFunc instead (optional)
 		getFunc = function() return Parent.SavedVars.groupInvite end, -- if multiSelect is true the getFunc must return a table
 		setFunc = function(var) Parent.SavedVars.groupInvite = var end, -- if multiSelect is true the setFunc's var must be a table
 		tooltip = "Allows you to attempt to send group invite requests to friends showing as offline.",
@@ -204,28 +185,6 @@ function SM:CreateSettingsPanel()
 	i = i + 1
 	optionsData[i] = {
 		type = "checkbox",
-    name = "Offline Notice",
-    getFunc = function() return Parent.SavedVars.offlineNotice end,
-    setFunc = function(value) Parent.SavedVars.offlineNotice = value end,
-    tooltip = "Notifies you on login if you're set to Offline.",
-    width = "full",
-		default = Parent.Defaults.offlineNotice,
-	}
-
-	i = i + 1
-	optionsData[i] = {
-		type = "checkbox",
-    name = "Whisper Notice",
-    getFunc = function() return Parent.SavedVars.whisperNotice end,
-    setFunc = function(value) Parent.SavedVars.whisperNotice = value end,
-    tooltip = "Notifies you when you send a whisper and are offline.",
-    width = "full",
-		default = Parent.Defaults.whisperNotice,
-	}
-
-	i = i + 1
-	optionsData[i] = {
-		type = "checkbox",
     name = "AFK Timeout",
     getFunc = function() return Parent.SavedVars.afkTimerEnabled end,
     setFunc = function(value) Parent.SavedVars.afkTimerEnabled = value if value == true then Parent.AFKM:StartTimerAgain() end end,
@@ -252,14 +211,6 @@ function SM:CreateSettingsPanel()
 		default = Parent.Defaults.afkTimeout,
 	}
 
-	choicesValues = {
-		Parent.PlayerStatus.disabled,
-		Parent.PlayerStatus.online,
-		Parent.PlayerStatus.away,
-		Parent.PlayerStatus.dnd,
-		Parent.PlayerStatus.offline,
-	}
-
 	i = i + 1
 	optionsData[i] = {
 		type = "checkbox",
@@ -275,8 +226,8 @@ function SM:CreateSettingsPanel()
 	optionsData[i] = {
 		type = "dropdown",
 		name = "Account Wide Status", -- or string id or function returning a string
-		choices = {"Disabled", "Online", "Away", "Do Not Disturb", "Offline"},
-		choicesValues = choicesValues, -- if specified, these values will get passed to setFunc instead (optional)
+		choices = self:GetKeys(Parent.PlayerStatus),
+		choicesValues = self:GetValues(Parent.PlayerStatus), -- if specified, these values will get passed to setFunc instead (optional)
 		getFunc = function() return Parent.SavedVars.accountOverride end, -- if multiSelect is true the getFunc must return a table
 		setFunc = function(var) Parent.SavedVars.accountOverride = var end, -- if multiSelect is true the setFunc's var must be a table
 		width = "full", -- or "half" (optional)
@@ -323,8 +274,8 @@ function SM:CreateSettingsPanel()
 		subcontrols[j] = {
 			type = "dropdown",
 			name = "Status", -- or string id or function returning a string
-			choices = {"Disabled", "Online", "Away", "Do Not Disturb", "Offline"},
-			choicesValues = choicesValues, -- if specified, these values will get passed to setFunc instead (optional)
+			choices = self:GetKeys(Parent.PlayerStatus),
+			choicesValues = self:GetValues(Parent.PlayerStatus), -- if specified, these values will get passed to setFunc instead (optional)
 			getFunc = function() return char.charOverride end, -- if multiSelect is true the getFunc must return a table
 			setFunc = function(var) char.charOverride = var end, -- if multiSelect is true the setFunc's var must be a table
 			width = "full", -- or "half" (optional)
@@ -373,6 +324,89 @@ function SM:CreateSettingsPanel()
 		tooltip = function() if Parent.SavedVars.accountOverrideEnabled then return "Disable Account Wide Overide to select per character status." end end,
 	}
 
+	i = i + 1
+	optionsData[i] = {
+		type = "header",
+		name = "Notifications",
+	}
+
+	i = i + 1
+	optionsData[i] = {
+		type = "dropdown",
+		name = "Notification Type", -- or string id or function returning a string
+		choices = self:GetKeys(Parent.NotificationTypes),
+		choicesValues = self:GetValues(Parent.NotificationTypes), -- if specified, these values will get passed to setFunc instead (optional)
+		getFunc = function() return Parent.SavedVars.notificationType end, -- if multiSelect is true the getFunc must return a table
+		setFunc = function(var) Parent.SavedVars.notificationType = var end, -- if multiSelect is true the setFunc's var must be a table
+		tooltip = "Choose where to redirect the notifications from this add-on. If directed to chat, chat messages must be enabled in Misc.",
+		width = "full", -- or "half" (optional)
+		scrollable = false, -- boolean or number, if set the dropdown will feature a scroll bar if there are a large amount of choices and limit the visible lines to the specified number or 10 if true is used (optional)
+		default = Parent.Defaults.notificationType, -- default value or function that returns the default value (optional)
+		multiSelect = false, -- boolean or function returning a boolean. If set to true you can select multiple entries at the list (optional)
+	}
+
+	i = i + 1
+	optionsData[i] = {
+		type = "dropdown",
+		name = "Notification Size", -- or string id or function returning a string
+		choices = self:GetKeys(Parent.NotificationSizes),
+		choicesValues = self:GetValues(Parent.NotificationSizes), -- if specified, these values will get passed to setFunc instead (optional)
+		getFunc = function() return Parent.SavedVars.notificationSize end, -- if multiSelect is true the getFunc must return a table
+		setFunc = function(var) Parent.SavedVars.notificationSize = var end, -- if multiSelect is true the setFunc's var must be a table
+		tooltip = "Size of center screen notifications.",
+		width = "full", -- or "half" (optional)
+		scrollable = false, -- boolean or number, if set the dropdown will feature a scroll bar if there are a large amount of choices and limit the visible lines to the specified number or 10 if true is used (optional)
+		default = Parent.Defaults.notificationSize, -- default value or function that returns the default value (optional)
+		multiSelect = false, -- boolean or function returning a boolean. If set to true you can select multiple entries at the list (optional)
+	}
+
+	i = i + 1
+	optionsData[i] = {
+		type = "dropdown",
+		name = "Notification Sound", -- or string id or function returning a string
+		choices = self:GetKeys(Parent.NotificationSounds),
+		choicesValues = self:GetValues(Parent.NotificationSounds), -- if specified, these values will get passed to setFunc instead (optional)
+		getFunc = function() return Parent.SavedVars.notificationSound end, -- if multiSelect is true the getFunc must return a table
+		setFunc = function(var) Parent.SavedVars.notificationSound = var end, -- if multiSelect is true the setFunc's var must be a table
+		width = "full", -- or "half" (optional)
+		scrollable = false, -- boolean or number, if set the dropdown will feature a scroll bar if there are a large amount of choices and limit the visible lines to the specified number or 10 if true is used (optional)
+		default = Parent.Defaults.notificationSound, -- default value or function that returns the default value (optional)
+		multiSelect = false, -- boolean or function returning a boolean. If set to true you can select multiple entries at the list (optional)
+	}
+
+	i = i + 1
+	optionsData[i] = {
+		type = "checkbox",
+    name = "Offline Notice",
+    getFunc = function() return Parent.SavedVars.offlineNotice end,
+    setFunc = function(value) Parent.SavedVars.offlineNotice = value end,
+    tooltip = "Notifies you on login if you're set to Offline.",
+    width = "full",
+		default = Parent.Defaults.offlineNotice,
+	}
+
+	i = i + 1
+	optionsData[i] = {
+		type = "checkbox",
+    name = "Whisper Notice",
+    getFunc = function() return Parent.SavedVars.whisperNotice end,
+    setFunc = function(value) Parent.SavedVars.whisperNotice = value end,
+    tooltip = "Notifies you when you send a whisper and are offline.",
+    width = "full",
+		default = Parent.Defaults.whisperNotice,
+	}
+
+	i = i + 1
+	optionsData[i] = {
+		type = "checkbox",
+    name = "AFK Notice",
+    getFunc = function() return Parent.SavedVars.afkNotice end,
+    setFunc = function(value) Parent.SavedVars.afkNotice = value end,
+    tooltip = "Notifies you when you are set to AFK or back to Online from AFK.",
+    width = "full",
+		default = Parent.Defaults.afkNotice,
+	}
+
   i = i + 1
   optionsData[i] = {
 		type = "header",
@@ -418,6 +452,36 @@ function SM:CreateSettingsPanel()
 	CM:RegisterCallback("LAM-PanelControlsCreated", LAMPanelCreated)
 	CM:RegisterCallback("LAM-PanelOpened", LAMPanelOpened)
 	LAM2:RegisterOptionControls(Parent.addonName .. "_LAM", optionsData)
+end
+
+
+--[[------------------------------------------------------------------------------------------------
+SM:GetValues(data)
+Inputs:				data 						- data to get a list of values from
+Outputs:			values 					- list of values
+Description:	Returns a list of values.
+------------------------------------------------------------------------------------------------]]--
+function SM:GetValues(data)
+	local values = {}
+	for key, value in pairs(data) do
+		table.insert(values, value)
+	end
+	return values
+end
+
+
+--[[------------------------------------------------------------------------------------------------
+SM:GetKeys(data)
+Inputs:				data 						- data to get a list of keys from
+Outputs:			keys 						- list of keys
+Description:	Returns a list of keys.
+------------------------------------------------------------------------------------------------]]--
+function SM:GetKeys(data)
+	local keys = {}
+	for key, value in pairs(data) do
+		table.insert(keys, key)
+	end
+	return keys
 end
 
 

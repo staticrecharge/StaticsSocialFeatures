@@ -40,6 +40,9 @@ function NM:Initialize(Parent)
       messageParams:SetCSAType(CENTER_SCREEN_ANNOUNCE_TYPE_LORE_BOOK_LEARNED)
       CSA:AddMessageWithParams(messageParams)
     end,
+    [Parent.NotificationTypes.alert] = function(message)
+      ZO_Alert(UI_ALERT_CATEGORY_ALERT, SV.notificationSound, message)
+    end,
   }
 end
 

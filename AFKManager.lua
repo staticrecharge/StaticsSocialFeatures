@@ -30,13 +30,6 @@ function AFKM:Initialize(Parent)
   self.eventSpace = "SSFAFKTimer"
   self.updateInterval = 1000 -- ms
   self.afkAccumulator = 0 -- s
-  self.PlayerStatus = {
-		disabled = 5,
-		online = PLAYER_STATUS_ONLINE,
-		away = PLAYER_STATUS_AWAY,
-		dnd = PLAYER_STATUS_DO_NOT_DISTURB,
-		offline = PLAYER_STATUS_OFFLINE,
-	}
 
   local afkEnabled = Parent.SavedVars.afkTimerEnabled
   if afkEnabled then
@@ -54,6 +47,7 @@ Description:	Checks if the player is idle and updates the timer accordingly.
 function AFKM:PlayerIdle()
   local Parent = self:GetParent()
   local afkEnabled = Parent.SavedVars.afkTimerEnabled
+  local afkNotice = Parent.SavedVars.afkNotice
   -- Unregister timer and quit if setting changed since last update.
   if not afkEnabled then
     self.afkAccumulator = 0
@@ -81,15 +75,15 @@ function AFKM:PlayerIdle()
 		or IsUnitSwimming("player")
 	then
 		self.afkAccumulator = 0
-    if GetPlayerStatus() == self.PlayerStatus.away then
-      SelectPlayerStatus(self.PlayerStatus.online)
-      Parent:SendToChat("Switched to Online.")
+    if GetPlayerStatus() == Parent.PlayerStatus.Away then
+      SelectPlayerStatus(Parent.PlayerStatus.Online)
+      if afkNotice then Parent.NM:Notify("Switched to Online.") end
     end
   else
     self.afkAccumulator = self.afkAccumulator + 1
-    if self.afkAccumulator >= Parent.SavedVars.afkTimeout and GetPlayerStatus() == self.PlayerStatus.online then
-      SelectPlayerStatus(self.PlayerStatus.away)
-      Parent:SendToChat("Switched to AFK.")
+    if self.afkAccumulator >= Parent.SavedVars.afkTimeout and GetPlayerStatus() == Parent.PlayerStatus.Online then
+      SelectPlayerStatus(Parent.PlayerStatus.Away)
+      if afkNotice then Parent.NM:Notify("Switched to AFK.") end
     end
   end
 end

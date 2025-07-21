@@ -43,39 +43,44 @@ function SSF:Initialize()
 	self.chatTextColor = "|cFFFFFF"
 	self.chatSuffix = "|r"
 	self.PlayerStatus = {
-		disabled = 5,
-		online = PLAYER_STATUS_ONLINE,
-		away = PLAYER_STATUS_AWAY,
-		dnd = PLAYER_STATUS_DO_NOT_DISTURB,
-		offline = PLAYER_STATUS_OFFLINE,
+		Disabled = 5,
+		Online = PLAYER_STATUS_ONLINE,
+		Away = PLAYER_STATUS_AWAY,
+		DnD = PLAYER_STATUS_DO_NOT_DISTURB,
+		Offline = PLAYER_STATUS_OFFLINE,
 	}
 	self.FriendMsgType = {
-		all = 1,
-		fav = 2,
-		none = 3,
+		All = 1,
+		Fav = 2,
+		None = 3,
 	}
 	self.SharedGuildsSelection = {
-		all = 1,
-		fav = 2,
-		none = 3,
+		All = 1,
+		Fav = 2,
+		None = 3,
 	}
 	self.GroupInviteSelection = {
-		all = 1,
-		fav = 2,
-		none = 3,
+		All = 1,
+		Fav = 2,
+		None = 3,
 	}
 	self.NotificationTypes = {
-    chat = 1,
-    centerScreen = 2,
+    Chat = 1,
+    ["Center Screen"] = 2,
+		Alert = 3,
   }
   self.NotificationSizes = {
-    small = CSA_CATEGORY_SMALL_TEXT,
-    med = CSA_CATEGORY_MAJOR_TEXT,
-    large = CSA_CATEGORY_LARGE_TEXT,
+    Small = CSA_CATEGORY_SMALL_TEXT,
+    Medium = CSA_CATEGORY_MAJOR_TEXT,
+    Large = CSA_CATEGORY_LARGE_TEXT,
   }
 	self.NotificationSounds = {
-		["None"] = nil,
+		["None"] = SOUNDS.NONE,
 		["Book Acquired"] = SOUNDS.BOOK_ACQUIRED,
+		["Default Click"] = SOUNDS.DEFAULT_CLICK,
+		["Map Open"] = SOUNDS.MAP_WINDOW_OPEN,
+		["Error"] = SOUNDS.GENERAL_ALERT_ERROR,
+		["New"] = SOUNDS.NEW_NOTIFICATION,
 	}
 	self.IconTextures = {
 		"/esoui/art/compass/target_gold_star.dds",					-- Gold Star
@@ -97,10 +102,10 @@ function SSF:Initialize()
 	self.Defaults = {
 		chatMsgEnabled = true,
 		debugMode = false,
-		charOverride = self.PlayerStatus.disabled,
+		charOverride = self.PlayerStatus.Disabled,
 		charOverrideLogin = false,
 		charOverrideLogout = false,
-		accountOverride = self.PlayerStatus.disabled,
+		accountOverride = self.PlayerStatus.Disabled,
 		accountOverrideLogin = false,
 		accountOverrideLogout = false,
 		accountOverrideEnabled = true,
@@ -108,19 +113,20 @@ function SSF:Initialize()
 		afkTimeout = 600, -- s
 		Characters = {},
 		Favs = {},
-		friendMsg = self.FriendMsgType.all,
+		friendMsg = self.FriendMsgType.All,
 		favFriendsTop = true,
-		sharedGuilds = self.SharedGuildsSelection.all,
+		sharedGuilds = self.SharedGuildsSelection.All,
 		favIconSize = 90, -- %
 		favIconInheritColor = false,
 		favIconTexture = self.IconTextures[1],
 		settingsChanged = true,
 		offlineNotice = true,
-		groupInvite = self.GroupInviteSelection.all,
+		groupInvite = self.GroupInviteSelection.All,
 		whisperNotice = true,
-		notificationType = self.NotificationTypes.centerScreen,
-		notificationSize = self.NotificationSizes.med,
+		notificationType = self.NotificationTypes["Center Screen"],
+		notificationSize = self.NotificationSizes.Medium,
 		notificationSound = self.NotificationSounds["Book Acquired"],
+		afkNotice = true,
 	}
 	self.chatRouterEventRedirected = false
 
@@ -289,7 +295,7 @@ function SSF:LogoutQuitHook()
 			self:DebugMsg(zo_strformat("Player status set to <<1>>", self.SavedVars.accountOverride))
 		else
 			local i = self:GetCharacterIndex()
-			if self.SavedVars.Characters[i].charOverride ~= self.PlayerStatus.disabled and self.SavedVars.Characters[i].charOverrideLogout then
+			if self.SavedVars.Characters[i].charOverride ~= self.PlayerStatus.Disabled and self.SavedVars.Characters[i].charOverrideLogout then
 				SelectPlayerStatus(self.SavedVars.Characters[i].charOverride)
 				self:DebugMsg(zo_strformat("Player status set to <<1>>", self.SavedVars.Characters[i].charOverride))
 			end
@@ -494,8 +500,8 @@ function SSF:OnPlayerActivated(eventCode, initial)
 	self:DebugMsg(zo_strformat("Player status is <<1>>", GetPlayerStatus()))
 	if not initial then
 		self:SettingsChanged()
-		if self.SavedVars.offlineNotice and GetPlayerStatus() == self.PlayerStatus.offline then
-			self:SendToChat("You are set to offline.")
+		if self.SavedVars.offlineNotice and GetPlayerStatus() == self.PlayerStatus.Offline then
+			self.NM:Notify("You are set to offline.")
 		end
 		if self.initialized then self:DebugMsg("Initialized.") end
 		local i = self:GetCharacterIndex()
@@ -504,7 +510,7 @@ function SSF:OnPlayerActivated(eventCode, initial)
 			SelectPlayerStatus(self.SavedVars.accountOverride)
 			self:DebugMsg(zo_strformat("Player status set to <<1>>", self.SavedVars.accountOverride))
 		else
-			if self.SavedVars.Characters[i].charOverride ~= self.PlayerStatus.disabled and self.SavedVars.Characters[i].charOverrideLogin then
+			if self.SavedVars.Characters[i].charOverride ~= self.PlayerStatus.Disabled and self.SavedVars.Characters[i].charOverrideLogin then
 				SelectPlayerStatus(self.SavedVars.Characters[i].charOverride)
 				self:DebugMsg(zo_strformat("Player status set to <<1>>", self.SavedVars.Characters[i].charOverride))
 			end
@@ -528,8 +534,8 @@ Description:	Fired when there is a chat message. Checking for outgoing whispers 
 function SSF:OnEventChatMessageChannel(eventCode, channelType, fromName, text, isCustomerService, fromDisplayName)
 	if channelType ~= CHAT_CHANNEL_WHISPER_SENT then return end
 	self:DebugMsg("OnEventChatMessageChannel event fired.")
-	if GetPlayerStatus() == self.PlayerStatus.offline and self.SavedVars.whisperNotice then
-		self:SendToChat("You are set to offline and cannot receive replies to whispers.")
+	if GetPlayerStatus() == self.PlayerStatus.Offline and self.SavedVars.whisperNotice then
+		self.NM:Notify("You are set to offline and cannot receive replies to whispers.")
 	end
 end
 
