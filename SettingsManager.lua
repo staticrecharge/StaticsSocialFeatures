@@ -14,8 +14,8 @@ local FL = FRIENDS_LIST
 
 
 --[[------------------------------------------------------------------------------------------------
-SDM Class Initialization
-SDM    - Object containing all functions, tables, variables,and constants.
+SM Class Initialization
+SM    - Object containing all functions, tables, variables,and constants.
   |-  Parent    - Reference to parent object.
 ------------------------------------------------------------------------------------------------]]--
 local SM = ZO_InitializingObject:Subclass()

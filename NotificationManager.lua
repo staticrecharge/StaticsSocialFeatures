@@ -1,0 +1,79 @@
+--[[------------------------------------------------------------------------------------------------
+Title:          Notification Manager
+Author:         Static_Recharge
+Description:    Creates and handles the notifications for the add-on.
+------------------------------------------------------------------------------------------------]]--
+
+
+--[[------------------------------------------------------------------------------------------------
+Libraries and Aliases
+------------------------------------------------------------------------------------------------]]--
+local CSA = CENTER_SCREEN_ANNOUNCE
+
+
+--[[------------------------------------------------------------------------------------------------
+NM Class Initialization
+NM    - Object containing all functions, tables, variables,and constants.
+  |-  Parent    - Reference to parent object.
+------------------------------------------------------------------------------------------------]]--
+local NM = ZO_InitializingObject:Subclass()
+
+
+--[[------------------------------------------------------------------------------------------------
+NM:Initialize(Parent)
+Inputs:				Parent 					- The parent object containing other required information.  
+Outputs:			None
+Description:	Initializes all of the variables and tables.
+------------------------------------------------------------------------------------------------]]--
+function NM:Initialize(Parent)
+  self.Parent = Parent
+  local SV = Parent.SavedVars
+  self.NotificationHandlers = {
+    [Parent.NotificationTypes.chat] = function(message)
+      if not message then return end
+      Parent:SendToChat(message)
+      if SV.notificationSound then PlaySound(SV.notificationSound) end
+    end,
+    [Parent.NotificationTypes.centerScreen] = function(message)
+      local messageParams = CSA:CreateMessageParams(SV.notificationSize, SV.notificationSound)
+      messageParams:SetText(message)
+      messageParams:SetCSAType(CENTER_SCREEN_ANNOUNCE_TYPE_LORE_BOOK_LEARNED)
+      CSA:AddMessageWithParams(messageParams)
+    end,
+  }
+end
+
+
+--[[------------------------------------------------------------------------------------------------
+NM:Notify(message)
+Inputs:				message         - The message to post to the correct notify channel 
+Outputs:			None
+Description:	Updates the notification settings.
+------------------------------------------------------------------------------------------------]]--
+function NM:Notify(message)
+  local Parent = self:GetParent()
+  local SV = Parent.SavedVars
+  self.NotificationHandlers[SV.notificationType](message)
+end
+
+
+--[[------------------------------------------------------------------------------------------------
+NM:GetParent()
+Inputs:				None
+Outputs:			Parent          - The parent object of this object.
+Description:	Returns the parent object of this object for reference to parent variables.
+------------------------------------------------------------------------------------------------]]--
+function NM:GetParent()
+  return self.Parent
+end
+
+
+--[[------------------------------------------------------------------------------------------------
+StaticsRecruiterInitNotificationManager(Parent)
+Inputs:				Parent          - The parent object of the object to be created.
+Outputs:			NM              - The new object created.
+Description:	Global function to create a new instance of this object.
+------------------------------------------------------------------------------------------------]]--
+function StaticsSocialFeaturesInitNotificationManager(Parent)
+	return NM:New(Parent)
+end

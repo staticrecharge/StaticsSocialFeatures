@@ -1,7 +1,7 @@
 --[[------------------------------------------------------------------------------------------------
 Title:					Static's Social Features
 Author:					Static_Recharge
-Version:				1.0.3
+Version:				1.0.4
 Description:		Adds specific social featues.
 ------------------------------------------------------------------------------------------------]]--
 
@@ -16,6 +16,7 @@ local EM = EVENT_MANAGER
 local FLM = FRIENDS_LIST_MANAGER
 local FL = FRIENDS_LIST
 local CR = CHAT_ROUTER
+local CSA = CENTER_SCREEN_ANNOUNCE
 
 
 --[[------------------------------------------------------------------------------------------------
@@ -35,10 +36,10 @@ Description:	Initializes all of the variables, object managers, slash commands a
 function SSF:Initialize()
 	-- Static definitions
 	self.addonName = "StaticsSocialFeatures"
-	self.addonVersion = "1.0.3"
+	self.addonVersion = "1.0.4"
 	self.varsVersion = 2 -- SHOULD BE 2
 	self.author = "|CFF0000Static_Recharge|r"
-	self.chatPrefix = "|cFFFFFF[SSF]:|r "
+	self.chatPrefix = "|cFF6600[SSF]:|r "
 	self.chatTextColor = "|cFFFFFF"
 	self.chatSuffix = "|r"
 	self.PlayerStatus = {
@@ -62,6 +63,19 @@ function SSF:Initialize()
 		all = 1,
 		fav = 2,
 		none = 3,
+	}
+	self.NotificationTypes = {
+    chat = 1,
+    centerScreen = 2,
+  }
+  self.NotificationSizes = {
+    small = CSA_CATEGORY_SMALL_TEXT,
+    med = CSA_CATEGORY_MAJOR_TEXT,
+    large = CSA_CATEGORY_LARGE_TEXT,
+  }
+	self.NotificationSounds = {
+		["None"] = nil,
+		["Book Acquired"] = SOUNDS.BOOK_ACQUIRED,
 	}
 	self.IconTextures = {
 		"/esoui/art/compass/target_gold_star.dds",					-- Gold Star
@@ -104,6 +118,9 @@ function SSF:Initialize()
 		offlineNotice = true,
 		groupInvite = self.GroupInviteSelection.all,
 		whisperNotice = true,
+		notificationType = self.NotificationTypes.centerScreen,
+		notificationSize = self.NotificationSizes.med,
+		notificationSound = self.NotificationSounds["Book Acquired"],
 	}
 	self.chatRouterEventRedirected = false
 
@@ -132,6 +149,7 @@ function SSF:Initialize()
 	-- Manager Initializations
 	self.SM = StaticsSocialFeaturesInitSettingsManager(self)
 	self.AFKM = StaticsSocialFeaturesInitAFKManager(self)
+	self.NM = StaticsSocialFeaturesInitNotificationManager(self)
 
 	-- ZO Hooks
 	self:FriendListHook()
@@ -154,6 +172,7 @@ function SSF:Initialize()
 
 	-- Slash commands declarations
 	-- Menu slash command is defined in SettingsManager.lua
+	SLASH_COMMANDS["/ssftest"] = function(...) self:Test(...) end
 
 	-- Keybindings associations
 
@@ -475,7 +494,9 @@ function SSF:OnPlayerActivated(eventCode, initial)
 	self:DebugMsg(zo_strformat("Player status is <<1>>", GetPlayerStatus()))
 	if not initial then
 		self:SettingsChanged()
-		if self.SavedVars.offlineNotice and GetPlayerStatus() == self.PlayerStatus.offline then self:SendToChat("You are set to offline.") end
+		if self.SavedVars.offlineNotice and GetPlayerStatus() == self.PlayerStatus.offline then
+			self:SendToChat("You are set to offline.")
+		end
 		if self.initialized then self:DebugMsg("Initialized.") end
 		local i = self:GetCharacterIndex()
 		self:DebugMsg(zo_strformat("Character \"<<1>>\" (<<2>>) loaded.", self.SavedVars.Characters[i].name, self.SavedVars.Characters[i].id))
@@ -563,7 +584,6 @@ end
 --[[------------------------------------------------------------------------------------------------
 function SSF:DebugMsg(inputString)
 Inputs:				inputString			- The debug string to print to chat
-							...							- More inputs to be placed on new lines within the same message.
 Outputs:			None
 Description:	Checks if debugging mode is on and if so, sends the input message to chat.
 ------------------------------------------------------------------------------------------------]]--
@@ -575,7 +595,18 @@ end
 
 
 --[[------------------------------------------------------------------------------------------------
-Main add-on event registration. Creates the global object, StaticsRecruiter, of the SR class.
+function SSF:Test(...)
+Inputs:				...							- Various test inputs.
+Outputs:			None
+Description:	For internal add-on testing only.
+------------------------------------------------------------------------------------------------]]--
+function SSF:Test(...)
+	self.NM:Notify(...)
+end
+
+
+--[[------------------------------------------------------------------------------------------------
+Main add-on event registration. Creates the global object, StaticsSocialFeatures, of the SSF class.
 ------------------------------------------------------------------------------------------------]]--
 EM:RegisterForEvent("StaticsSocialFeatures", EVENT_ADD_ON_LOADED, function(eventCode, addonName)
 	if addonName ~= "StaticsSocialFeatures" then return end
