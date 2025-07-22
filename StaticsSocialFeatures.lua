@@ -46,7 +46,7 @@ function SSF:Initialize()
 		Disabled = 5,
 		Online = PLAYER_STATUS_ONLINE,
 		Away = PLAYER_STATUS_AWAY,
-		DnD = PLAYER_STATUS_DO_NOT_DISTURB,
+		["Do Not Disturb"] = PLAYER_STATUS_DO_NOT_DISTURB,
 		Offline = PLAYER_STATUS_OFFLINE,
 	}
 	self.FriendMsgType = {
@@ -315,12 +315,12 @@ Description:	Hooks into the friends message to allow only showing for fav friend
 function SSF:FriendMessageHook()
 	function self:OnFriendStatusChanged(eventCode, displayName, characterName, oldStatus, newStatus)
 		self:DebugMsg("Friend Message prehook started.")
-		if self.SavedVars.friendMsg == self.FriendMsgType.none then return end
-		if self.SavedVars.friendMsg == self.FriendMsgType.all or (self.SavedVars.friendMsg == self.FriendMsgType.fav and self.SavedVars.Favs[displayName]) then
+		if self.SavedVars.friendMsg == self.FriendMsgType.None then return end
+		if self.SavedVars.friendMsg == self.FriendMsgType.All or (self.SavedVars.friendMsg == self.FriendMsgType.Fav and self.SavedVars.Favs[displayName]) then
 			CR:FormatAndAddChatMessage(eventCode, displayName, characterName, oldStatus, newStatus)
 		end
 	end
-	if self.SavedVars.friendMsg ~= self.FriendMsgType.none and self.chatRouterEventRedirected == false then
+	if self.SavedVars.friendMsg ~= self.FriendMsgType.None and self.chatRouterEventRedirected == false then
 		EM:UnregisterForEvent("ChatRouter", EVENT_FRIEND_PLAYER_STATUS_CHANGED)
 		EM:RegisterForEvent("ChatRouter", EVENT_FRIEND_PLAYER_STATUS_CHANGED, function(...) self:OnFriendStatusChanged(...) end)
 		self.chatRouterEventRedirected = true
@@ -342,7 +342,7 @@ function SSF:FriendKeybindStripHook()
 		self_.keybindStripDescriptor[2].visible = function()
 			if IsGroupModificationAvailable() and self_.mouseOverRow then
 				local data = ZO_ScrollList_GetData(self_.mouseOverRow)
-				if data and data.hasCharacter and (data.online or (self.SavedVars.Favs[data.displayName] and self.SavedVars.groupInvite ~= self.GroupInviteSelection.none) or self.SavedVars.groupInvite == self.GroupInviteSelection.all) then
+				if data and data.hasCharacter and (data.online or (self.SavedVars.Favs[data.displayName] and self.SavedVars.groupInvite ~= self.GroupInviteSelection.None) or self.SavedVars.groupInvite == self.GroupInviteSelection.All) then
 					return true
 				end
 			end
@@ -391,7 +391,7 @@ Description:	Hooks into the friends list to sort Fav friends to the top.
 function SSF:FriendListTooltipHook()
 	ZO_PostHook(ZO_SocialListKeyboard, 'DisplayName_OnMouseEnter', function(self_, control)
 		--self:DebugMsg("Friend List Tooltip prehook started.")
-		if self.SavedVars.sharedGuilds == self.SharedGuildsSelection.none then return end
+		if self.SavedVars.sharedGuilds == self.SharedGuildsSelection.None then return end
 		local row = control:GetParent()
     local data = ZO_ScrollList_GetData(row)
 		local guilds = {}
@@ -405,7 +405,7 @@ function SSF:FriendListTooltipHook()
 			end
 		end
 		guilds = table.concat(guilds, "\n")
-		if data and data.hasCharacter and guilds ~= "" and (self.SavedVars.sharedGuilds == self.SharedGuildsSelection.all or (self.SavedVars.sharedGuilds == self.SharedGuildsSelection.fav and  self.SavedVars.Favs[data.displayName]))then
+		if data and data.hasCharacter and guilds ~= "" and (self.SavedVars.sharedGuilds == self.SharedGuildsSelection.All or (self.SavedVars.sharedGuilds == self.SharedGuildsSelection.Fav and  self.SavedVars.Favs[data.displayName]))then
 			SetTooltipText(InformationTooltip, guilds)
 		end
 	end)
@@ -424,12 +424,12 @@ function SSF:FriendListContextMenu()
 		local name = data.displayName
 		if self.SavedVars.Favs[name] then 
 			AddCustomMenuItem("Remove Fav Friend", function() self:RemoveFavFriend(name) end)
-			if data.status == self.PlayerStatus.offline and self.SavedVars.groupInvite ~= self.GroupInviteSelection.none then
+			if data.status == self.PlayerStatus.Offline and self.SavedVars.groupInvite ~= self.GroupInviteSelection.None then
 				AddCustomMenuItem("Invite to Group", function() GroupInviteByName(name) end)
 			end
 		else
 			AddCustomMenuItem("Add Fav Friend", function() self:AddFavFriend(name) end)
-			if data.status == self.PlayerStatus.offline and self.SavedVars.groupInvite == self.GroupInviteSelection.all then
+			if data.status == self.PlayerStatus.Offline and self.SavedVars.groupInvite == self.GroupInviteSelection.All then
 				AddCustomMenuItem("Invite to Group", function() GroupInviteByName(name) end)
 			end
 		end

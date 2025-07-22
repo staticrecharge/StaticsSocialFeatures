@@ -44,7 +44,7 @@ function SM:CreateSettingsPanel()
 	local panelData = {
 		type = "panel",
 		name = "Static's Social Features",
-		displayName = "Static's Social Features",
+		displayName = "|cFF6600Static's Social Features|r",
 		author = Parent.author,
 		--website = "https://www.esoui.com/downloads/info3836-StaticsRecruiter.html",
 		feedback = "https://www.esoui.com/portal.php?&uid=6533",
@@ -187,7 +187,7 @@ function SM:CreateSettingsPanel()
 		type = "checkbox",
     name = "AFK Timeout",
     getFunc = function() return Parent.SavedVars.afkTimerEnabled end,
-    setFunc = function(value) Parent.SavedVars.afkTimerEnabled = value if value == true then Parent.AFKM:StartTimerAgain() end end,
+    setFunc = function(value) Parent.SavedVars.afkTimerEnabled = value if value then Parent.AFKM:StartTimerAgain() end end,
     tooltip = "If enabled, switches you to Away after the timeout. Also automatically switches you back to Online when activity is detected.",
     width = "full",
 		default = Parent.Defaults.afkTimerEnabled,
@@ -292,7 +292,7 @@ function SM:CreateSettingsPanel()
 			setFunc = function(value) char.charOverrideLogin = value end,
 			width = "half",
 			tooltip = "Force the selected status on character login.",
-			disabled = function() return char.charOverride == Parent.PlayerStatus.disabled end,
+			disabled = function() return char.charOverride == Parent.PlayerStatus.Disabled end,
 			default = Parent.Defaults.charOverrideLogin,
 		}
 
@@ -304,7 +304,7 @@ function SM:CreateSettingsPanel()
 			setFunc = function(value) char.charOverrideLogout = value end,
 			width = "half",
 			tooltip = "Force the selected status on character logout.",
-			disabled = function() return char.charOverride == Parent.PlayerStatus.disabled end,
+			disabled = function() return char.charOverride == Parent.PlayerStatus.Disabled end,
 			default = Parent.Defaults.charOverrideLogout,
 		}
 
@@ -358,6 +358,7 @@ function SM:CreateSettingsPanel()
 		scrollable = false, -- boolean or number, if set the dropdown will feature a scroll bar if there are a large amount of choices and limit the visible lines to the specified number or 10 if true is used (optional)
 		default = Parent.Defaults.notificationSize, -- default value or function that returns the default value (optional)
 		multiSelect = false, -- boolean or function returning a boolean. If set to true you can select multiple entries at the list (optional)
+		disabled = function() return Parent.SavedVars.notificationType == Parent.NotificationTypes["Center Screen"] end,
 	}
 
 	i = i + 1

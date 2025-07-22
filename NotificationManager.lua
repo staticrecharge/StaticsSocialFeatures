@@ -29,18 +29,18 @@ function NM:Initialize(Parent)
   self.Parent = Parent
   local SV = Parent.SavedVars
   self.NotificationHandlers = {
-    [Parent.NotificationTypes.chat] = function(message)
+    [Parent.NotificationTypes.Chat] = function(message)
       if not message then return end
       Parent:SendToChat(message)
       if SV.notificationSound then PlaySound(SV.notificationSound) end
     end,
-    [Parent.NotificationTypes.centerScreen] = function(message)
+    [Parent.NotificationTypes["Center Screen"]] = function(message)
       local messageParams = CSA:CreateMessageParams(SV.notificationSize, SV.notificationSound)
       messageParams:SetText(message)
       messageParams:SetCSAType(CENTER_SCREEN_ANNOUNCE_TYPE_LORE_BOOK_LEARNED)
       CSA:AddMessageWithParams(messageParams)
     end,
-    [Parent.NotificationTypes.alert] = function(message)
+    [Parent.NotificationTypes.Alert] = function(message)
       ZO_Alert(UI_ALERT_CATEGORY_ALERT, SV.notificationSound, message)
     end,
   }
