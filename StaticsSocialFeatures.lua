@@ -48,31 +48,29 @@ function SSF:Initialize()
 		Away = PLAYER_STATUS_AWAY,
 		["Do Not Disturb"] = PLAYER_STATUS_DO_NOT_DISTURB,
 		Offline = PLAYER_STATUS_OFFLINE,
+		Keys = {"Disabled", "Online", "Away", "Do Not Disturb", "Offline"},
+		Values = {5, PLAYER_STATUS_ONLINE, PLAYER_STATUS_AWAY, PLAYER_STATUS_DO_NOT_DISTURB, PLAYER_STATUS_OFFLINE},
 	}
-	self.FriendMsgType = {
+	self.AllFavNone = {
 		All = 1,
 		Fav = 2,
 		None = 3,
-	}
-	self.SharedGuildsSelection = {
-		All = 1,
-		Fav = 2,
-		None = 3,
-	}
-	self.GroupInviteSelection = {
-		All = 1,
-		Fav = 2,
-		None = 3,
+		Keys = {"All", "Fav", "None"},
+		Values = {1, 2, 3},
 	}
 	self.NotificationTypes = {
-    Chat = 1,
+    ["Chat"] = 1,
     ["Center Screen"] = 2,
-		Alert = 3,
+		["Alert"] = 3,
+		Keys = {"Chat", "Center Screen", "Alert"},
+		Values = {1, 2, 3},
   }
   self.NotificationSizes = {
     Small = CSA_CATEGORY_SMALL_TEXT,
     Medium = CSA_CATEGORY_MAJOR_TEXT,
     Large = CSA_CATEGORY_LARGE_TEXT,
+		Keys = {"Small", "Medium", "Large"},
+		Values = {CSA_CATEGORY_SMALL_TEXT, CSA_CATEGORY_MAJOR_TEXT, CSA_CATEGORY_LARGE_TEXT},
   }
 	self.NotificationSounds = {
 		["None"] = SOUNDS.NONE,
@@ -80,7 +78,8 @@ function SSF:Initialize()
 		["Default Click"] = SOUNDS.DEFAULT_CLICK,
 		["Map Open"] = SOUNDS.MAP_WINDOW_OPEN,
 		["Error"] = SOUNDS.GENERAL_ALERT_ERROR,
-		["New"] = SOUNDS.NEW_NOTIFICATION,
+		Keys = {"None", "Book", "Default", "Map Open", "Error"},
+		Values = {SOUNDS.NONE, SOUNDS.BOOK_ACQUIRED, SOUNDS.DEFAULT_CLICK, SOUNDS.MAP_WINDOW_OPEN, SOUNDS.GENERAL_ALERT_ERROR},
 	}
 	self.IconTextures = {
 		"/esoui/art/compass/target_gold_star.dds",					-- Gold Star
@@ -113,20 +112,25 @@ function SSF:Initialize()
 		afkTimeout = 600, -- s
 		Characters = {},
 		Favs = {},
-		friendMsg = self.FriendMsgType.All,
+		friendMsg = self.AllFavNone.All,
+		friendMsgChat = true,
 		favFriendsTop = true,
-		sharedGuilds = self.SharedGuildsSelection.All,
+		sharedGuilds = self.AllFavNone.All,
 		favIconSize = 90, -- %
 		favIconInheritColor = false,
 		favIconTexture = self.IconTextures[1],
 		settingsChanged = true,
 		offlineNotice = true,
-		groupInvite = self.GroupInviteSelection.All,
+		groupInvite = self.AllFavNone.All,
 		whisperNotice = true,
 		notificationType = self.NotificationTypes["Center Screen"],
 		notificationSize = self.NotificationSizes.Medium,
 		notificationSound = self.NotificationSounds["Book Acquired"],
 		afkNotice = true,
+		offlineTimerEnabled = false,
+		offlineTimeout = 10, -- m
+		offlineTimerNotice = true,
+		offlineTimerEnd = nil,
 	}
 	self.chatRouterEventRedirected = false
 
@@ -152,10 +156,10 @@ function SSF:Initialize()
 	table.sort(NewData, function(a, b) return a.name < b.name end)
 	self.SavedVars.Characters = NewData
 
-	-- Manager Initializations
-	self.SM = StaticsSocialFeaturesInitSettingsManager(self)
-	self.AFKM = StaticsSocialFeaturesInitAFKManager(self)
-	self.NM = StaticsSocialFeaturesInitNotificationManager(self)
+	-- Child Initializations
+	self.Settings = StaticsSocialFeaturesInitSettings(self)
+	self.Status = StaticsSocialFeaturesInitStatus(self)
+	self.Notifications = StaticsSocialFeaturesInitNotifications(self)
 
 	-- ZO Hooks
 	self:FriendListHook()
@@ -315,12 +319,25 @@ Description:	Hooks into the friends message to allow only showing for fav friend
 function SSF:FriendMessageHook()
 	function self:OnFriendStatusChanged(eventCode, displayName, characterName, oldStatus, newStatus)
 		self:DebugMsg("Friend Message prehook started.")
-		if self.SavedVars.friendMsg == self.FriendMsgType.None then return end
-		if self.SavedVars.friendMsg == self.FriendMsgType.All or (self.SavedVars.friendMsg == self.FriendMsgType.Fav and self.SavedVars.Favs[displayName]) then
-			CR:FormatAndAddChatMessage(eventCode, displayName, characterName, oldStatus, newStatus)
+		if self.SavedVars.friendMsg == self.AllFavNone.None then return end
+		if self.SavedVars.friendMsg == self.AllFavNone.All or (self.SavedVars.friendMsg == self.AllFavNone.Fav and self.SavedVars.Favs[displayName]) then
+			if not self.SavedVars.friendMsgChat and self.SavedVars.notificationType ~= self.NotificationTypes.Chat then
+				local wasOnline = oldStatus ~= self.PlayerStatus.Offline
+				local isOnline = newStatus ~= self.PlayerStatus.Offline
+				if wasOnline ~= isOnline then
+					local text
+					if isOnline then
+						self.Notifications:Notify(zo_strformat(SI_FRIENDS_LIST_FRIEND_CHARACTER_LOGGED_ON, displayName, characterName))
+					else
+						self.Notifications:Notify(zo_strformat(SI_FRIENDS_LIST_FRIEND_CHARACTER_LOGGED_OFF, displayName, characterName))
+					end
+				end
+			else
+				CR:FormatAndAddChatMessage(eventCode, displayName, characterName, oldStatus, newStatus)
+			end
 		end
 	end
-	if self.SavedVars.friendMsg ~= self.FriendMsgType.None and self.chatRouterEventRedirected == false then
+	if self.SavedVars.friendMsg ~= self.AllFavNone.None and self.chatRouterEventRedirected == false then
 		EM:UnregisterForEvent("ChatRouter", EVENT_FRIEND_PLAYER_STATUS_CHANGED)
 		EM:RegisterForEvent("ChatRouter", EVENT_FRIEND_PLAYER_STATUS_CHANGED, function(...) self:OnFriendStatusChanged(...) end)
 		self.chatRouterEventRedirected = true
@@ -342,7 +359,7 @@ function SSF:FriendKeybindStripHook()
 		self_.keybindStripDescriptor[2].visible = function()
 			if IsGroupModificationAvailable() and self_.mouseOverRow then
 				local data = ZO_ScrollList_GetData(self_.mouseOverRow)
-				if data and data.hasCharacter and (data.online or (self.SavedVars.Favs[data.displayName] and self.SavedVars.groupInvite ~= self.GroupInviteSelection.None) or self.SavedVars.groupInvite == self.GroupInviteSelection.All) then
+				if data and data.hasCharacter and (data.online or (self.SavedVars.Favs[data.displayName] and self.SavedVars.groupInvite ~= self.AllFavNone.None) or self.SavedVars.groupInvite == self.AllFavNone.All) then
 					return true
 				end
 			end
@@ -391,7 +408,7 @@ Description:	Hooks into the friends list to sort Fav friends to the top.
 function SSF:FriendListTooltipHook()
 	ZO_PostHook(ZO_SocialListKeyboard, 'DisplayName_OnMouseEnter', function(self_, control)
 		--self:DebugMsg("Friend List Tooltip prehook started.")
-		if self.SavedVars.sharedGuilds == self.SharedGuildsSelection.None then return end
+		if self.SavedVars.sharedGuilds == self.AllFavNone.None then return end
 		local row = control:GetParent()
     local data = ZO_ScrollList_GetData(row)
 		local guilds = {}
@@ -405,7 +422,7 @@ function SSF:FriendListTooltipHook()
 			end
 		end
 		guilds = table.concat(guilds, "\n")
-		if data and data.hasCharacter and guilds ~= "" and (self.SavedVars.sharedGuilds == self.SharedGuildsSelection.All or (self.SavedVars.sharedGuilds == self.SharedGuildsSelection.Fav and  self.SavedVars.Favs[data.displayName]))then
+		if data and data.hasCharacter and guilds ~= "" and (self.SavedVars.sharedGuilds == self.AllFavNone.All or (self.SavedVars.sharedGuilds == self.AllFavNone.Fav and  self.SavedVars.Favs[data.displayName]))then
 			SetTooltipText(InformationTooltip, guilds)
 		end
 	end)
@@ -424,12 +441,12 @@ function SSF:FriendListContextMenu()
 		local name = data.displayName
 		if self.SavedVars.Favs[name] then 
 			AddCustomMenuItem("Remove Fav Friend", function() self:RemoveFavFriend(name) end)
-			if data.status == self.PlayerStatus.Offline and self.SavedVars.groupInvite ~= self.GroupInviteSelection.None then
+			if data.status == self.PlayerStatus.Offline and self.SavedVars.groupInvite ~= self.AllFavNone.None then
 				AddCustomMenuItem("Invite to Group", function() GroupInviteByName(name) end)
 			end
 		else
 			AddCustomMenuItem("Add Fav Friend", function() self:AddFavFriend(name) end)
-			if data.status == self.PlayerStatus.Offline and self.SavedVars.groupInvite == self.GroupInviteSelection.All then
+			if data.status == self.PlayerStatus.Offline and self.SavedVars.groupInvite == self.AllFavNone.All then
 				AddCustomMenuItem("Invite to Group", function() GroupInviteByName(name) end)
 			end
 		end
@@ -488,8 +505,7 @@ end
 --[[------------------------------------------------------------------------------------------------
 function SSF:OnPlayerActivated(eventCode, initial)
 Inputs:				eventCode				- Internal ZOS event code, not used here.
-							initial					- Indicates if this is the first activation from log-in. From 
-															experience this is actually opposite what it means.
+							initial					- Indicates if this is the first activation from log-in.
 Outputs:			None
 Description:	Fired when the player character is available after loading screens such as changing 
 							zones, reloadui and logging in. Sets the desired player status for the logged in
@@ -498,24 +514,24 @@ Description:	Fired when the player character is available after loading screens 
 function SSF:OnPlayerActivated(eventCode, initial)
 	self:DebugMsg("OnPlayerActivated event fired.")
 	self:DebugMsg(zo_strformat("Player status is <<1>>", GetPlayerStatus()))
-	if not initial then
+	if initial then
 		self:SettingsChanged()
-		if self.SavedVars.offlineNotice and GetPlayerStatus() == self.PlayerStatus.Offline then
-			self.NM:Notify("You are set to offline.")
-		end
 		if self.initialized then self:DebugMsg("Initialized.") end
 		local i = self:GetCharacterIndex()
 		self:DebugMsg(zo_strformat("Character \"<<1>>\" (<<2>>) loaded.", self.SavedVars.Characters[i].name, self.SavedVars.Characters[i].id))
 		if self.SavedVars.accountOverrideEnabled and self.SavedVars.accountOverrideLogin then
 			SelectPlayerStatus(self.SavedVars.accountOverride)
 			self:DebugMsg(zo_strformat("Player status set to <<1>>", self.SavedVars.accountOverride))
-		else
-			if self.SavedVars.Characters[i].charOverride ~= self.PlayerStatus.Disabled and self.SavedVars.Characters[i].charOverrideLogin then
-				SelectPlayerStatus(self.SavedVars.Characters[i].charOverride)
-				self:DebugMsg(zo_strformat("Player status set to <<1>>", self.SavedVars.Characters[i].charOverride))
-			end
+		elseif
+			self.SavedVars.Characters[i].charOverride ~= self.PlayerStatus.Disabled and self.SavedVars.Characters[i].charOverrideLogin then
+			SelectPlayerStatus(self.SavedVars.Characters[i].charOverride)
+			self:DebugMsg(zo_strformat("Player status set to <<1>>", self.SavedVars.Characters[i].charOverride))
+		end
+		if self.SavedVars.offlineNotice and GetPlayerStatus() == self.PlayerStatus.Offline then
+			self.Notifications:Notify("You are set to offline.")
 		end
 	end
+	EM:UnregisterForEvent(self.addonName, EVENT_PLAYER_ACTIVATED)
 end
 
 
@@ -535,7 +551,7 @@ function SSF:OnEventChatMessageChannel(eventCode, channelType, fromName, text, i
 	if channelType ~= CHAT_CHANNEL_WHISPER_SENT then return end
 	self:DebugMsg("OnEventChatMessageChannel event fired.")
 	if GetPlayerStatus() == self.PlayerStatus.Offline and self.SavedVars.whisperNotice then
-		self.NM:Notify("You are set to offline and cannot receive replies to whispers.")
+		self.Notifications:Notify("You are set to offline and cannot receive replies to whispers.")
 	end
 end
 
@@ -607,7 +623,7 @@ Outputs:			None
 Description:	For internal add-on testing only.
 ------------------------------------------------------------------------------------------------]]--
 function SSF:Test(...)
-	self.NM:Notify(...)
+	self.Notifications:Notify(...)
 end
 
 

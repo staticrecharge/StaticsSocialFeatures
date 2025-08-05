@@ -9,3 +9,4 @@
   - Send notifications to chat/center/alert areas
   - Friend login/logout message control
   - Context menu and keybind strip additions
+  - Offline timer (works through reload)

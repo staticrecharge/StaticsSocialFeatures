@@ -1,5 +1,5 @@
 --[[------------------------------------------------------------------------------------------------
-Title:          Notification Manager
+Title:          Notifications
 Author:         Static_Recharge
 Description:    Creates and handles the notifications for the add-on.
 ------------------------------------------------------------------------------------------------]]--
@@ -12,20 +12,20 @@ local CSA = CENTER_SCREEN_ANNOUNCE
 
 
 --[[------------------------------------------------------------------------------------------------
-NM Class Initialization
-NM    - Object containing all functions, tables, variables,and constants.
+Notifications Class Initialization
+Notifications    - Object containing all functions, tables, variables,and constants.
   |-  Parent    - Reference to parent object.
 ------------------------------------------------------------------------------------------------]]--
-local NM = ZO_InitializingObject:Subclass()
+local Notifications = ZO_InitializingObject:Subclass()
 
 
 --[[------------------------------------------------------------------------------------------------
-NM:Initialize(Parent)
+Notifications:Initialize(Parent)
 Inputs:				Parent 					- The parent object containing other required information.  
 Outputs:			None
 Description:	Initializes all of the variables and tables.
 ------------------------------------------------------------------------------------------------]]--
-function NM:Initialize(Parent)
+function Notifications:Initialize(Parent)
   self.Parent = Parent
   local SV = Parent.SavedVars
   self.NotificationHandlers = {
@@ -48,12 +48,12 @@ end
 
 
 --[[------------------------------------------------------------------------------------------------
-NM:Notify(message)
+Notifications:Notify(message)
 Inputs:				message         - The message to post to the correct notify channel 
 Outputs:			None
 Description:	Updates the notification settings.
 ------------------------------------------------------------------------------------------------]]--
-function NM:Notify(message)
+function Notifications:Notify(message)
   local Parent = self:GetParent()
   local SV = Parent.SavedVars
   self.NotificationHandlers[SV.notificationType](message)
@@ -61,22 +61,22 @@ end
 
 
 --[[------------------------------------------------------------------------------------------------
-NM:GetParent()
+Notifications:GetParent()
 Inputs:				None
 Outputs:			Parent          - The parent object of this object.
 Description:	Returns the parent object of this object for reference to parent variables.
 ------------------------------------------------------------------------------------------------]]--
-function NM:GetParent()
+function Notifications:GetParent()
   return self.Parent
 end
 
 
 --[[------------------------------------------------------------------------------------------------
-StaticsRecruiterInitNotificationManager(Parent)
+StaticsRecruiterInitNotifications(Parent)
 Inputs:				Parent          - The parent object of the object to be created.
-Outputs:			NM              - The new object created.
+Outputs:			Notifications              - The new object created.
 Description:	Global function to create a new instance of this object.
 ------------------------------------------------------------------------------------------------]]--
-function StaticsSocialFeaturesInitNotificationManager(Parent)
-	return NM:New(Parent)
+function StaticsSocialFeaturesInitNotifications(Parent)
+	return Notifications:New(Parent)
 end

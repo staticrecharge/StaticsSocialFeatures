@@ -15,9 +15,9 @@
 
 # You can read the full terms at https://account.elderscrollsonline.com/add-on-terms
 
-AFKManager.lua
-NotificationManager.lua
-SettingsManager.lua
+Notifications.lua
+Settings.lua
+Status.lua
 StaticsSocialFeatures.lua
 
 # Special thanks to @blaize_0 and @Brasstortoise for helping me test this add-on!
