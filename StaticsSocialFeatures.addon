@@ -6,7 +6,7 @@
 ## DependsOn: LibAddonMenu-2.0>=38 LibCustomMenu>=730
 ## SavedVariables: StaticsSocialFeaturesAccountWideVars
 ## DisableSavedVariablesAutoSaving: 1
-## Description: Adds specific social features
+## Description: Adds specific social features, fav friends, etc.
 ## IsLibrary: false
 
 # This Add-on is not created by, affiliated with or sponsored by ZeniMax Media Inc. or its affiliates. 

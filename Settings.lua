@@ -533,7 +533,7 @@ end
 
 
 --[[------------------------------------------------------------------------------------------------
-StaticsRecruiterInitSettings(Parent)
+StaticsSocialFeaturesInitSettings(Parent)
 Inputs:				Parent          - The parent object of the object to be created.
 Outputs:			SDM             - The new object created.
 Description:	Global function to create a new instance of this object.
