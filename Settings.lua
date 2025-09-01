@@ -75,9 +75,9 @@ function Settings:CreateSettingsPanel()
 	optionsData[i] = {
 		type = "checkbox",
     name = "Show Fav Friends at Top",
-    getFunc = function() return Parent.SavedVars.favFriendsTop end,
+    getFunc = function() return Parent.SV.favFriendsTop end,
     setFunc = function(value)
-			Parent.SavedVars.favFriendsTop = value
+			Parent.SV.favFriendsTop = value
 			if value == false then
 				FL.currentSortKey = "status"
 			end
@@ -94,8 +94,8 @@ function Settings:CreateSettingsPanel()
 		name = "Shared Guild Info", -- or string id or function returning a string
 		choices = Parent.AllFavNone.Keys,
 		choicesValues = Parent.AllFavNone.Values, -- if specified, these values will get passed to setFunc instead (optional)
-		getFunc = function() return Parent.SavedVars.sharedGuilds end, -- if multiSelect is true the getFunc must return a table
-		setFunc = function(var) Parent.SavedVars.sharedGuilds = var end, -- if multiSelect is true the setFunc's var must be a table
+		getFunc = function() return Parent.SV.sharedGuilds end, -- if multiSelect is true the getFunc must return a table
+		setFunc = function(var) Parent.SV.sharedGuilds = var end, -- if multiSelect is true the setFunc's var must be a table
 		tooltip = "Displays which guilds you share with the highlighted friend.",
 		width = "full", -- or "half" (optional)
 		scrollable = false, -- boolean or number, if set the dropdown will feature a scroll bar if there are a large amount of choices and limit the visible lines to the specified number or 10 if true is used (optional)
@@ -105,12 +105,23 @@ function Settings:CreateSettingsPanel()
 
 	i = i + 1
 	optionsData[i] = {
+		type = "checkbox",
+    name = "Shared Guild Info in Group",
+    getFunc = function() return Parent.SV.sharedGuildsGroup end,
+    setFunc = function(value) Parent.SV.sharedGuildsGroup = value end,
+    tooltip = "Displays which guilds you share with the highlighted group member.",
+    width = "full",
+		default = Parent.Defaults.sharedGuildsGroup,
+	}
+
+	i = i + 1
+	optionsData[i] = {
 		type = "dropdown",
 		name = "Offline Group Invite", -- or string id or function returning a string
 		choices = Parent.AllFavNone.Keys,
 		choicesValues = Parent.AllFavNone.Values, -- if specified, these values will get passed to setFunc instead (optional)
-		getFunc = function() return Parent.SavedVars.groupInvite end, -- if multiSelect is true the getFunc must return a table
-		setFunc = function(var) Parent.SavedVars.groupInvite = var end, -- if multiSelect is true the setFunc's var must be a table
+		getFunc = function() return Parent.SV.groupInvite end, -- if multiSelect is true the getFunc must return a table
+		setFunc = function(var) Parent.SV.groupInvite = var end, -- if multiSelect is true the setFunc's var must be a table
 		tooltip = "Allows you to attempt to send group invite requests to friends showing as offline.",
 		width = "full", -- or "half" (optional)
 		scrollable = false, -- boolean or number, if set the dropdown will feature a scroll bar if there are a large amount of choices and limit the visible lines to the specified number or 10 if true is used (optional)
@@ -123,8 +134,8 @@ function Settings:CreateSettingsPanel()
 		type = "iconpicker",
 		name = "Fav Icon", -- or string id or function returning a string
 		choices = Parent.IconTextures,
-		getFunc = function() return Parent.SavedVars.favIconTexture end,
-		setFunc = function(icon) Parent.SavedVars.favIconTexture = icon Parent:UpdateFavIcon() end,
+		getFunc = function() return Parent.SV.favIconTexture end,
+		setFunc = function(icon) Parent.SV.favIconTexture = icon Parent:UpdateFavIcon() end,
 		maxColumns = 5, -- number of icons in one row (optional)
 		visibleRows = 3, -- number of visible rows (optional)
 		iconSize = 32, -- size of the icons (optional)
@@ -136,8 +147,8 @@ function Settings:CreateSettingsPanel()
 	optionsData[i] = {
 		type = "slider",
 		name = "Icon Size (%)",
-		getFunc = function() return Parent.SavedVars.favIconSize end,
-		setFunc = function(value) Parent.SavedVars.favIconSize = value Parent:UpdateFavIcon() end,
+		getFunc = function() return Parent.SV.favIconSize end,
+		setFunc = function(value) Parent.SV.favIconSize = value Parent:UpdateFavIcon() end,
 		min = 50,
 		max = 150,
 		step = 5,
@@ -153,11 +164,11 @@ function Settings:CreateSettingsPanel()
 	optionsData[i] = {
 		type = "checkbox",
     name = "Inherit Text Color",
-    getFunc = function() return Parent.SavedVars.favIconInheritColor end,
-    setFunc = function(value) Parent.SavedVars.favIconInheritColor = value Parent:UpdateFavIcon() end,
+    getFunc = function() return Parent.SV.favIconInheritColor end,
+    setFunc = function(value) Parent.SV.favIconInheritColor = value Parent:UpdateFavIcon() end,
     tooltip = "Makes the icon match the color of the text in the friends list.",
     width = "full",
-		default = Parent.Defaults.favFriendsTop,
+		default = Parent.Defaults.favIconInheritColor,
 	}
 
 	i = i + 1
@@ -170,8 +181,8 @@ function Settings:CreateSettingsPanel()
 	optionsData[i] = {
 		type = "checkbox",
     name = "AFK Timeout",
-    getFunc = function() return Parent.SavedVars.afkTimerEnabled end,
-    setFunc = function(value) Parent.SavedVars.afkTimerEnabled = value if value then Parent.Status:StartAFKTimerAgain() end end,
+    getFunc = function() return Parent.SV.afkTimerEnabled end,
+    setFunc = function(value) Parent.SV.afkTimerEnabled = value if value then Parent.Status:StartAFKTimerAgain() end end,
     tooltip = "If enabled, switches you to Away after the timeout. Also automatically switches you back to Online when activity is detected.",
     width = "full",
 		default = Parent.Defaults.afkTimerEnabled,
@@ -181,8 +192,8 @@ function Settings:CreateSettingsPanel()
 	optionsData[i] = {
 		type = "slider",
 		name = "AFK Timeout (s)",
-		getFunc = function() return Parent.SavedVars.afkTimeout end,
-		setFunc = function(value) Parent.SavedVars.afkTimeout = value end,
+		getFunc = function() return Parent.SV.afkTimeout end,
+		setFunc = function(value) Parent.SV.afkTimeout = value end,
 		min = 30,
 		max = 1200,
 		step = 1,
@@ -191,7 +202,7 @@ function Settings:CreateSettingsPanel()
 		autoSelect = true,
 		readOnly = false,
 		width = "full", -- or "half" (optional)
-		disabled = function() return not Parent.SavedVars.afkTimerEnabled end,
+		disabled = function() return not Parent.SV.afkTimerEnabled end,
 		default = Parent.Defaults.afkTimeout,
 	}
 
@@ -199,8 +210,8 @@ function Settings:CreateSettingsPanel()
 	optionsData[i] = {
 		type = "checkbox",
     name = "Offline Timeout",
-    getFunc = function() return Parent.SavedVars.offlineTimerEnabled end,
-    setFunc = function(value) Parent.SavedVars.offlineTimerEnabled = value end,
+    getFunc = function() return Parent.SV.offlineTimerEnabled end,
+    setFunc = function(value) Parent.SV.offlineTimerEnabled = value end,
     tooltip = "If enabled, switches you to Online after the timeout. Usefull if you forget to turn yourself Online often. Disabling while the timer is running will cause it to stop. Relog to re-enable.",
     width = "full",
 		default = Parent.Defaults.offlineTimerEnabled,
@@ -210,8 +221,8 @@ function Settings:CreateSettingsPanel()
 	optionsData[i] = {
 		type = "slider",
 		name = "Offline Timeout (m)",
-		getFunc = function() return Parent.SavedVars.offlineTimeout end,
-		setFunc = function(value) Parent.SavedVars.offlineTimeout = value end,
+		getFunc = function() return Parent.SV.offlineTimeout end,
+		setFunc = function(value) Parent.SV.offlineTimeout = value end,
 		tooltip = "Changes to this will take effect on the next login.",
 		min = 5,
 		max = 30,
@@ -221,7 +232,7 @@ function Settings:CreateSettingsPanel()
 		autoSelect = true,
 		readOnly = false,
 		width = "full", -- or "half" (optional)
-		disabled = function() return not Parent.SavedVars.offlineTimerEnabled end,
+		disabled = function() return not Parent.SV.offlineTimerEnabled end,
 		default = Parent.Defaults.offlineTimeout,
 	}
 
@@ -229,8 +240,8 @@ function Settings:CreateSettingsPanel()
 	optionsData[i] = {
 		type = "checkbox",
 		name = "Account Wide Override",
-		getFunc = function() return Parent.SavedVars.accountOverrideEnabled end,
-		setFunc = function(value) Parent.SavedVars.accountOverrideEnabled = value end,
+		getFunc = function() return Parent.SV.accountOverrideEnabled end,
+		setFunc = function(value) Parent.SV.accountOverrideEnabled = value end,
 		width = "Full",
 		tooltip = "When enabled, all characters will use the same settings. Disable to set indivually for each character.",
 		default = Parent.Defaults.accountOverrideEnabled,
@@ -242,24 +253,24 @@ function Settings:CreateSettingsPanel()
 		name = "Account Wide Status", -- or string id or function returning a string
 		choices = Parent.PlayerStatus.Keys,
 		choicesValues = Parent.PlayerStatus.Values, -- if specified, these values will get passed to setFunc instead (optional)
-		getFunc = function() return Parent.SavedVars.accountOverride end, -- if multiSelect is true the getFunc must return a table
-		setFunc = function(var) Parent.SavedVars.accountOverride = var end, -- if multiSelect is true the setFunc's var must be a table
+		getFunc = function() return Parent.SV.accountOverride end, -- if multiSelect is true the getFunc must return a table
+		setFunc = function(var) Parent.SV.accountOverride = var end, -- if multiSelect is true the setFunc's var must be a table
 		width = "full", -- or "half" (optional)
 		scrollable = false, -- boolean or number, if set the dropdown will feature a scroll bar if there are a large amount of choices and limit the visible lines to the specified number or 10 if true is used (optional)
 		default = Parent.Defaults.accountOverride, -- default value or function that returns the default value (optional)
 		multiSelect = false, -- boolean or function returning a boolean. If set to true you can select multiple entries at the list (optional)
-		disabled = function() return not Parent.SavedVars.accountOverrideEnabled end,
+		disabled = function() return not Parent.SV.accountOverrideEnabled end,
 	}
 
 	i = i + 1
 	optionsData[i] = {
 		type = "checkbox",
 		name = "Login",
-		getFunc = function() return Parent.SavedVars.accountOverrideLogin end,
-		setFunc = function(value) Parent.SavedVars.accountOverrideLogin = value end,
+		getFunc = function() return Parent.SV.accountOverrideLogin end,
+		setFunc = function(value) Parent.SV.accountOverrideLogin = value end,
 		width = "half",
 		tooltip = "Force the selected status on character login.",
-		disabled = function() return Parent.SavedVars.accountOverride == Parent.PlayerStatus.disabled or not Parent.SavedVars.accountOverrideEnabled end,
+		disabled = function() return Parent.SV.accountOverride == Parent.PlayerStatus.disabled or not Parent.SV.accountOverrideEnabled end,
 		default = Parent.Defaults.accountOverrideLogin,
 	}
 
@@ -267,11 +278,11 @@ function Settings:CreateSettingsPanel()
 	optionsData[i] = {
 		type = "checkbox",
 		name = "Logout",
-		getFunc = function() return Parent.SavedVars.accountOverrideLogout end,
-		setFunc = function(value) Parent.SavedVars.accountOverrideLogout = value end,
+		getFunc = function() return Parent.SV.accountOverrideLogout end,
+		setFunc = function(value) Parent.SV.accountOverrideLogout = value end,
 		width = "half",
 		tooltip = "Force the selected status on character logout.",
-		disabled = function() return Parent.SavedVars.accountOverride == Parent.PlayerStatus.disabled or not Parent.SavedVars.accountOverrideEnabled end,
+		disabled = function() return Parent.SV.accountOverride == Parent.PlayerStatus.disabled or not Parent.SV.accountOverrideEnabled end,
 		default = Parent.Defaults.accountOverrideLogout,
 	}
 
@@ -281,7 +292,7 @@ function Settings:CreateSettingsPanel()
     width = "full",
 	}
 
-	for key, char in ipairs(Parent.SavedVars.Characters) do
+	for key, char in ipairs(Parent.SV.Characters) do
 		k = k + 1
 		local subcontrols = {}
 		local j = 1
@@ -334,8 +345,8 @@ function Settings:CreateSettingsPanel()
 		type = "submenu",
 		name = "Character Status",
 		controls = controls,
-		disabled = function() return Parent.SavedVars.accountOverrideEnabled end,
-		tooltip = function() if Parent.SavedVars.accountOverrideEnabled then return "Disable Account Wide Overide to select per character status." end end,
+		disabled = function() return Parent.SV.accountOverrideEnabled end,
+		tooltip = function() if Parent.SV.accountOverrideEnabled then return "Disable Account Wide Overide to select per character status." end end,
 	}
 
 	i = i + 1
@@ -350,8 +361,8 @@ function Settings:CreateSettingsPanel()
 		name = "Notification Type", -- or string id or function returning a string
 		choices = Parent.NotificationTypes.Keys,
 		choicesValues = Parent.NotificationTypes.Values, -- if specified, these values will get passed to setFunc instead (optional)
-		getFunc = function() return Parent.SavedVars.notificationType end, -- if multiSelect is true the getFunc must return a table
-		setFunc = function(var) Parent.SavedVars.notificationType = var end, -- if multiSelect is true the setFunc's var must be a table
+		getFunc = function() return Parent.SV.notificationType end, -- if multiSelect is true the getFunc must return a table
+		setFunc = function(var) Parent.SV.notificationType = var end, -- if multiSelect is true the setFunc's var must be a table
 		tooltip = "Choose where to redirect the notifications from this add-on. If directed to chat, chat messages must be enabled in Misc.",
 		width = "full", -- or "half" (optional)
 		scrollable = false, -- boolean or number, if set the dropdown will feature a scroll bar if there are a large amount of choices and limit the visible lines to the specified number or 10 if true is used (optional)
@@ -365,14 +376,14 @@ function Settings:CreateSettingsPanel()
 		name = "Notification Size", -- or string id or function returning a string
 		choices = Parent.NotificationSizes.Keys,
 		choicesValues = Parent.NotificationSizes.Values, -- if specified, these values will get passed to setFunc instead (optional)
-		getFunc = function() return Parent.SavedVars.notificationSize end, -- if multiSelect is true the getFunc must return a table
-		setFunc = function(var) Parent.SavedVars.notificationSize = var end, -- if multiSelect is true the setFunc's var must be a table
+		getFunc = function() return Parent.SV.notificationSize end, -- if multiSelect is true the getFunc must return a table
+		setFunc = function(var) Parent.SV.notificationSize = var end, -- if multiSelect is true the setFunc's var must be a table
 		tooltip = "Size of center screen notifications.",
 		width = "full", -- or "half" (optional)
 		scrollable = false, -- boolean or number, if set the dropdown will feature a scroll bar if there are a large amount of choices and limit the visible lines to the specified number or 10 if true is used (optional)
 		default = Parent.Defaults.notificationSize, -- default value or function that returns the default value (optional)
 		multiSelect = false, -- boolean or function returning a boolean. If set to true you can select multiple entries at the list (optional)
-		disabled = function() return Parent.SavedVars.notificationType ~= Parent.NotificationTypes["Center Screen"] end,
+		disabled = function() return Parent.SV.notificationType ~= Parent.NotificationTypes["Center Screen"] end,
 	}
 
 	i = i + 1
@@ -381,8 +392,8 @@ function Settings:CreateSettingsPanel()
 		name = "Notification Sound", -- or string id or function returning a string
 		choices = Parent.NotificationSounds.Keys,
 		choicesValues = Parent.NotificationSounds.Values, -- if specified, these values will get passed to setFunc instead (optional)
-		getFunc = function() return Parent.SavedVars.notificationSound end, -- if multiSelect is true the getFunc must return a table
-		setFunc = function(var) Parent.SavedVars.notificationSound = var PlaySound(Parent.SavedVars.notificationSound) end, -- if multiSelect is true the setFunc's var must be a table
+		getFunc = function() return Parent.SV.notificationSound end, -- if multiSelect is true the getFunc must return a table
+		setFunc = function(var) Parent.SV.notificationSound = var PlaySound(Parent.SV.notificationSound) end, -- if multiSelect is true the setFunc's var must be a table
 		width = "full", -- or "half" (optional)
 		scrollable = false, -- boolean or number, if set the dropdown will feature a scroll bar if there are a large amount of choices and limit the visible lines to the specified number or 10 if true is used (optional)
 		default = Parent.Defaults.notificationSound, -- default value or function that returns the default value (optional)
@@ -393,8 +404,8 @@ function Settings:CreateSettingsPanel()
 	optionsData[i] = {
 		type = "checkbox",
     name = "Offline Notice",
-    getFunc = function() return Parent.SavedVars.offlineNotice end,
-    setFunc = function(value) Parent.SavedVars.offlineNotice = value end,
+    getFunc = function() return Parent.SV.offlineNotice end,
+    setFunc = function(value) Parent.SV.offlineNotice = value end,
     tooltip = "Notifies you on login if you're set to Offline.",
     width = "full",
 		default = Parent.Defaults.offlineNotice,
@@ -404,8 +415,8 @@ function Settings:CreateSettingsPanel()
 	optionsData[i] = {
 		type = "checkbox",
     name = "Offline Timer Notice",
-    getFunc = function() return Parent.SavedVars.offlineTimerNotice end,
-    setFunc = function(value) Parent.SavedVars.offlineTimerNotice = value end,
+    getFunc = function() return Parent.SV.offlineTimerNotice end,
+    setFunc = function(value) Parent.SV.offlineTimerNotice = value end,
     tooltip = "Notifies you when you are automatically set to Online via the Offline Timer.",
     width = "full",
 		default = Parent.Defaults.offlineTimerNotice,
@@ -415,8 +426,8 @@ function Settings:CreateSettingsPanel()
 	optionsData[i] = {
 		type = "checkbox",
     name = "Whisper Notice",
-    getFunc = function() return Parent.SavedVars.whisperNotice end,
-    setFunc = function(value) Parent.SavedVars.whisperNotice = value end,
+    getFunc = function() return Parent.SV.whisperNotice end,
+    setFunc = function(value) Parent.SV.whisperNotice = value end,
     tooltip = "Notifies you when you send a whisper and are offline.",
     width = "full",
 		default = Parent.Defaults.whisperNotice,
@@ -426,8 +437,8 @@ function Settings:CreateSettingsPanel()
 	optionsData[i] = {
 		type = "checkbox",
     name = "AFK Notice",
-    getFunc = function() return Parent.SavedVars.afkNotice end,
-    setFunc = function(value) Parent.SavedVars.afkNotice = value end,
+    getFunc = function() return Parent.SV.afkNotice end,
+    setFunc = function(value) Parent.SV.afkNotice = value end,
     tooltip = "Notifies you when you are set to AFK or back to Online from AFK.",
     width = "full",
 		default = Parent.Defaults.afkNotice,
@@ -439,8 +450,8 @@ function Settings:CreateSettingsPanel()
 		name = "Friend Status Messages", -- or string id or function returning a string
 		choices = Parent.AllFavNone.Keys, --{"All", "Fav Only", "None"},
 		choicesValues = Parent.AllFavNone.Values, -- if specified, these values will get passed to setFunc instead (optional)
-		getFunc = function() return Parent.SavedVars.friendMsg end, -- if multiSelect is true the getFunc must return a table
-		setFunc = function(var) Parent.SavedVars.friendMsg = var end, -- if multiSelect is true the setFunc's var must be a table
+		getFunc = function() return Parent.SV.friendMsg end, -- if multiSelect is true the getFunc must return a table
+		setFunc = function(var) Parent.SV.friendMsg = var end, -- if multiSelect is true the setFunc's var must be a table
 		tooltip = "Control which friend status messages are displayed.",
 		width = "full", -- or "half" (optional)
 		scrollable = false, -- boolean or number, if set the dropdown will feature a scroll bar if there are a large amount of choices and limit the visible lines to the specified number or 10 if true is used (optional)
@@ -453,12 +464,12 @@ function Settings:CreateSettingsPanel()
 	optionsData[i] = {
 		type = "checkbox",
     name = "Friend Status to Chat",
-    getFunc = function() return Parent.SavedVars.friendMsgChat end,
-    setFunc = function(value) Parent.SavedVars.friendMsgChat = value end,
+    getFunc = function() return Parent.SV.friendMsgChat end,
+    setFunc = function(value) Parent.SV.friendMsgChat = value end,
     tooltip = "If disabled the friend notices will follow the notification settings above.",
     width = "full",
 		default = Parent.Defaults.friendMsgChat,
-		disabled = function() return Parent.SavedVars.friendMsg == Parent.AllFavNone.None end,
+		disabled = function() return Parent.SV.friendMsg == Parent.AllFavNone.None end,
 	}
 
   i = i + 1
@@ -471,8 +482,8 @@ function Settings:CreateSettingsPanel()
 	optionsData[i] = {
 		type = "checkbox",
     name = "Chat Messages",
-    getFunc = function() return Parent.SavedVars.chatMsgEnabled end,
-    setFunc = function(value) Parent.SavedVars.chatMsgEnabled = value end,
+    getFunc = function() return Parent.SV.chatMsgEnabled end,
+    setFunc = function(value) Parent.SV.chatMsgEnabled = value end,
     tooltip = "Disables ALL chat messages from this add-on.",
     width = "half",
 		default = Parent.Defaults.chatMsgEnabled,
@@ -482,12 +493,12 @@ function Settings:CreateSettingsPanel()
 	optionsData[i] = {
 		type = "checkbox",
     name = "Debugging Mode",
-    getFunc = function() return Parent.SavedVars.debugMode end,
-    setFunc = function(value) Parent.SavedVars.debugMode = value end,
+    getFunc = function() return Parent.SV.debugMode end,
+    setFunc = function(value) Parent.SV.debugMode = value end,
     tooltip = "Turns on extra messages for the purposes of debugging. Not intended for normal use. Must have chat messages enabled.",
     width = "half",
 		default = Parent.Defaults.debugMode,
-		disabled = not Parent.SavedVars.chatMsgEnabled,
+		disabled = not Parent.SV.chatMsgEnabled,
 	}
 
 	local function LAMPanelCreated(panel)

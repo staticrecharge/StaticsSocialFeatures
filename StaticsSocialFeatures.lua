@@ -1,7 +1,7 @@
 --[[------------------------------------------------------------------------------------------------
 Title:					Static's Social Features
 Author:					Static_Recharge
-Version:				1.0.4
+Version:				1.0.5
 Description:		Adds specific social featues.
 ------------------------------------------------------------------------------------------------]]--
 
@@ -36,7 +36,7 @@ Description:	Initializes all of the variables, object managers, slash commands a
 function SSF:Initialize()
 	-- Static definitions
 	self.addonName = "StaticsSocialFeatures"
-	self.addonVersion = "1.0.4"
+	self.addonVersion = "1.0.5"
 	self.varsVersion = 2 -- SHOULD BE 2
 	self.author = "|CFF0000Static_Recharge|r"
 	self.chatPrefix = "|cFF6600[SSF]:|r "
@@ -131,18 +131,19 @@ function SSF:Initialize()
 		offlineTimeout = 10, -- m
 		offlineTimerNotice = true,
 		offlineTimerEnd = nil,
+		sharedGuildsGroup = true,
 	}
 	self.chatRouterEventRedirected = false
 
 	-- Saved variables initialization
-	self.SavedVars = ZO_SavedVars:NewAccountWide("StaticsSocialFeaturesAccountWideVars", self.varsVersion, nil, self.Defaults, nil)
+	self.SV = ZO_SavedVars:NewAccountWide("StaticsSocialFeaturesAccountWideVars", self.varsVersion, nil, self.Defaults, nil)
 	-- Update Character list (preserve any settings)
 	local NewData = {}
 	for i=1, GetNumCharacters() do
 		local name, _, _, _, _, _, id, _ = GetCharacterInfo(i)
 		local found = false
 		name = zo_strformat("<<1>>", name)
-		for index, value in ipairs(self.SavedVars.Characters) do
+		for index, value in ipairs(self.SV.Characters) do
 			if value.id == id then
 				NewData[i] = {name = name, id = id, charOverride = value.charOverride, charOverrideLogin = value.charOverrideLogin, charOverrideLogout = value.charOverrideLogout}
 				found = true
@@ -154,7 +155,7 @@ function SSF:Initialize()
 		end
 	end
 	table.sort(NewData, function(a, b) return a.name < b.name end)
-	self.SavedVars.Characters = NewData
+	self.SV.Characters = NewData
 
 	-- Child Initializations
 	self.Settings = StaticsSocialFeaturesInitSettings(self)
@@ -169,6 +170,7 @@ function SSF:Initialize()
 	self:FriendMessageHook()
 	self:FriendKeybindStripHook()
 	self:FriendListTooltipHook()
+	self:GroupListTooltipHook()
 
 	-- Update Icon from settings
 	self:UpdateFavIcon()
@@ -182,7 +184,7 @@ function SSF:Initialize()
 
 	-- Slash commands declarations
 	-- Menu slash command is defined in SettingsManager.lua
-	SLASH_COMMANDS["/ssftest"] = function(...) self:Test(...) end
+	--SLASH_COMMANDS["/ssftest"] = function(...) self:Test(...) end
 
 	-- Keybindings associations
 
@@ -197,10 +199,10 @@ Outputs:			None
 Description:	Updates the display of the fav icon.
 ------------------------------------------------------------------------------------------------]]--
 function SSF:UpdateFavIcon()
-	if self.SavedVars.favIconInheritColor then
-		self.favIcon = zo_strformat("|t<<1>>%:<<2>>%:<<3>>:inheritcolor|t", self.SavedVars.favIconSize, self.SavedVars.favIconSize, self.SavedVars.favIconTexture)
+	if self.SV.favIconInheritColor then
+		self.favIcon = zo_strformat("|t<<1>>%:<<2>>%:<<3>>:inheritcolor|t", self.SV.favIconSize, self.SV.favIconSize, self.SV.favIconTexture)
 	else
-		self.favIcon = zo_strformat("|t<<1>>%:<<2>>%:<<3>>|t", self.SavedVars.favIconSize, self.SavedVars.favIconSize, self.SavedVars.favIconTexture)
+		self.favIcon = zo_strformat("|t<<1>>%:<<2>>%:<<3>>|t", self.SV.favIconSize, self.SV.favIconSize, self.SV.favIconTexture)
 	end
 	FLM:BuildMasterList()
 	FL:RefreshFilters()
@@ -218,7 +220,7 @@ function SSF:FriendListHook()
 	ZO_PostHook(FLM, 'BuildMasterList', function(self_)
 		self:DebugMsg("Friend List prehook started.")
 		for i, friendData in ipairs(self_.masterList) do
-			if self.SavedVars.Favs[friendData.displayName] then
+			if self.SV.Favs[friendData.displayName] then
 				friendData.favs = false -- ZO sort function sorts false entries before true ones
 			else
 				friendData.favs = true
@@ -239,7 +241,7 @@ function SSF:FriendEntryHook()
 		--self:DebugMsg("Friend Listy Entry prehook started.")
 		local displayNameLabel = control:GetNamedChild("DisplayName")
 		if displayNameLabel then
-			if self.SavedVars.Favs[data.displayName] then
+			if self.SV.Favs[data.displayName] then
 				displayNameLabel:SetText(zo_strformat("<<1>> <<2>>", self.favIcon, ZO_FormatUserFacingDisplayName(data.displayName)))
 			end
 		end
@@ -258,7 +260,7 @@ function SSF:FriendListSortHook()
 		self:DebugMsg("Friend List Sort prehook started.")
 		if self_.currentSortOrder == ZO_SORT_ORDER_UP then
 			for i, friendData in ipairs(FLM.masterList) do
-				if self.SavedVars.Favs[friendData.displayName] then
+				if self.SV.Favs[friendData.displayName] then
 					friendData.favs = false -- ZO sort function sorts false entries before true ones
 				else
 					friendData.favs = true
@@ -266,7 +268,7 @@ function SSF:FriendListSortHook()
 			end
 		else
 			for i, friendData in ipairs(FLM.masterList) do
-				if self.SavedVars.Favs[friendData.displayName] then
+				if self.SV.Favs[friendData.displayName] then
 					friendData.favs = true -- ZO sort function sorts false entries before true ones
 				else
 					friendData.favs = false
@@ -278,7 +280,7 @@ function SSF:FriendListSortHook()
 			prevSortKey = self_.currentSortKey
 		end
 		FRIENDS_LIST_ENTRY_SORT_KEYS["favs"] = {tiebreaker = prevSortKey}
-		if self.SavedVars.favFriendsTop then
+		if self.SV.favFriendsTop then
 			self_.currentSortKey = "favs"
 		end
 	end)
@@ -294,14 +296,14 @@ Description:	Hooks into the logout and quit function to set character status if 
 function SSF:LogoutQuitHook()
 	function self:OnLogout()
 		self:DebugMsg("Logout/Quit prehook started.")
-		if self.SavedVars.accountOverrideEnabled and self.SavedVars.accountOverrideLogout then
-			SelectPlayerStatus(self.SavedVars.accountOverride)
-			self:DebugMsg(zo_strformat("Player status set to <<1>>", self.SavedVars.accountOverride))
+		if self.SV.accountOverrideEnabled and self.SV.accountOverrideLogout then
+			SelectPlayerStatus(self.SV.accountOverride)
+			self:DebugMsg(zo_strformat("Player status set to <<1>>", self.SV.accountOverride))
 		else
 			local i = self:GetCharacterIndex()
-			if self.SavedVars.Characters[i].charOverride ~= self.PlayerStatus.Disabled and self.SavedVars.Characters[i].charOverrideLogout then
-				SelectPlayerStatus(self.SavedVars.Characters[i].charOverride)
-				self:DebugMsg(zo_strformat("Player status set to <<1>>", self.SavedVars.Characters[i].charOverride))
+			if self.SV.Characters[i].charOverride ~= self.PlayerStatus.Disabled and self.SV.Characters[i].charOverrideLogout then
+				SelectPlayerStatus(self.SV.Characters[i].charOverride)
+				self:DebugMsg(zo_strformat("Player status set to <<1>>", self.SV.Characters[i].charOverride))
 			end
 		end
 	end
@@ -319,9 +321,9 @@ Description:	Hooks into the friends message to allow only showing for fav friend
 function SSF:FriendMessageHook()
 	function self:OnFriendStatusChanged(eventCode, displayName, characterName, oldStatus, newStatus)
 		self:DebugMsg("Friend Message prehook started.")
-		if self.SavedVars.friendMsg == self.AllFavNone.None then return end
-		if self.SavedVars.friendMsg == self.AllFavNone.All or (self.SavedVars.friendMsg == self.AllFavNone.Fav and self.SavedVars.Favs[displayName]) then
-			if not self.SavedVars.friendMsgChat and self.SavedVars.notificationType ~= self.NotificationTypes.Chat then
+		if self.SV.friendMsg == self.AllFavNone.None then return end
+		if self.SV.friendMsg == self.AllFavNone.All or (self.SV.friendMsg == self.AllFavNone.Fav and self.SV.Favs[displayName]) then
+			if not self.SV.friendMsgChat and self.SV.notificationType ~= self.NotificationTypes.Chat then
 				local wasOnline = oldStatus ~= self.PlayerStatus.Offline
 				local isOnline = newStatus ~= self.PlayerStatus.Offline
 				if wasOnline ~= isOnline then
@@ -337,7 +339,7 @@ function SSF:FriendMessageHook()
 			end
 		end
 	end
-	if self.SavedVars.friendMsg ~= self.AllFavNone.None and self.chatRouterEventRedirected == false then
+	if self.SV.friendMsg ~= self.AllFavNone.None and self.chatRouterEventRedirected == false then
 		EM:UnregisterForEvent("ChatRouter", EVENT_FRIEND_PLAYER_STATUS_CHANGED)
 		EM:RegisterForEvent("ChatRouter", EVENT_FRIEND_PLAYER_STATUS_CHANGED, function(...) self:OnFriendStatusChanged(...) end)
 		self.chatRouterEventRedirected = true
@@ -359,7 +361,7 @@ function SSF:FriendKeybindStripHook()
 		self_.keybindStripDescriptor[2].visible = function()
 			if IsGroupModificationAvailable() and self_.mouseOverRow then
 				local data = ZO_ScrollList_GetData(self_.mouseOverRow)
-				if data and data.hasCharacter and (data.online or (self.SavedVars.Favs[data.displayName] and self.SavedVars.groupInvite ~= self.AllFavNone.None) or self.SavedVars.groupInvite == self.AllFavNone.All) then
+				if data and data.hasCharacter and (data.online or (self.SV.Favs[data.displayName] and self.SV.groupInvite ~= self.AllFavNone.None) or self.SV.groupInvite == self.AllFavNone.All) then
 					return true
 				end
 			end
@@ -370,7 +372,7 @@ function SSF:FriendKeybindStripHook()
 			name = function()
 				if self_.mouseOverRow then
 					local data = ZO_ScrollList_GetData(self_.mouseOverRow)
-					if self.SavedVars.Favs[data.displayName] then
+					if self.SV.Favs[data.displayName] then
 						return "Remove Fav"
 					end
 				end
@@ -380,7 +382,7 @@ function SSF:FriendKeybindStripHook()
 			callback = function()
 				if self_.mouseOverRow then
 					local data = ZO_ScrollList_GetData(self_.mouseOverRow)
-					if self.SavedVars.Favs[data.displayName] then
+					if self.SV.Favs[data.displayName] then
 						self:RemoveFavFriend(data.displayName)
 					else
 						self:AddFavFriend(data.displayName)
@@ -393,7 +395,7 @@ function SSF:FriendKeybindStripHook()
 				end
 				return false
 			end,
-			--icon = self.SavedVars.favIconTexture,
+			--icon = self.SV.favIconTexture,
 		}
 	end)
 end
@@ -403,12 +405,12 @@ end
 function SSF:FriendListTooltipHook()
 Inputs:			  None
 Outputs:			None
-Description:	Hooks into the friends list to sort Fav friends to the top.
+Description:	Hooks into the friends list to add mutual guilds to the tooltips.
 ------------------------------------------------------------------------------------------------]]--
 function SSF:FriendListTooltipHook()
 	ZO_PostHook(ZO_SocialListKeyboard, 'DisplayName_OnMouseEnter', function(self_, control)
 		--self:DebugMsg("Friend List Tooltip prehook started.")
-		if self.SavedVars.sharedGuilds == self.AllFavNone.None then return end
+		if self.SV.sharedGuilds == self.AllFavNone.None then return end
 		local row = control:GetParent()
     local data = ZO_ScrollList_GetData(row)
 		local guilds = {}
@@ -422,8 +424,38 @@ function SSF:FriendListTooltipHook()
 			end
 		end
 		guilds = table.concat(guilds, "\n")
-		if data and data.hasCharacter and guilds ~= "" and (self.SavedVars.sharedGuilds == self.AllFavNone.All or (self.SavedVars.sharedGuilds == self.AllFavNone.Fav and  self.SavedVars.Favs[data.displayName]))then
+		if data and data.hasCharacter and guilds ~= "" and (self.SV.sharedGuilds == self.AllFavNone.All or (self.SV.sharedGuilds == self.AllFavNone.Fav and  self.SV.Favs[data.displayName]))then
 			SetTooltipText(InformationTooltip, guilds)
+		end
+	end)
+end
+
+
+--[[------------------------------------------------------------------------------------------------
+function SSF:GroupListTooltipHook()
+Inputs:			  None
+Outputs:			None
+Description:	Hooks into the group list to sort Fav friends to the top.
+------------------------------------------------------------------------------------------------]]--
+function SSF:GroupListTooltipHook()
+	ZO_PostHook('ZO_GroupListRowCharacterName_OnMouseEnter', function(control)
+		--self:DebugMsg("Group List Tooltip prehook started.")
+		if not self.SV.sharedGuildsGroup then return end
+    local data = ZO_ScrollList_GetData(control.row)
+		if data.displayName == GetDisplayName() then return end
+		local guilds = {}
+		for i=1, GetNumGuilds() do
+			for j=1, GetGuildInfo(GetGuildId(i)) do
+				local name = GetGuildMemberInfo(GetGuildId(i),j)
+				if name == data.displayName then
+					table.insert(guilds, GetGuildName(GetGuildId(i)))
+					break
+				end
+			end
+		end
+		guilds = table.concat(guilds, "\n")
+		if data and data.hasCharacter and guilds ~= "" then
+			SetTooltipText(InformationTooltip, guilds) 
 		end
 	end)
 end
@@ -439,14 +471,14 @@ function SSF:FriendListContextMenu()
 	local function AddItem(data)
 		self:DebugMsg("Friend List Context Menu started.")
 		local name = data.displayName
-		if self.SavedVars.Favs[name] then 
+		if self.SV.Favs[name] then 
 			AddCustomMenuItem("Remove Fav Friend", function() self:RemoveFavFriend(name) end)
-			if data.status == self.PlayerStatus.Offline and self.SavedVars.groupInvite ~= self.AllFavNone.None then
+			if data.status == self.PlayerStatus.Offline and self.SV.groupInvite ~= self.AllFavNone.None then
 				AddCustomMenuItem("Invite to Group", function() GroupInviteByName(name) end)
 			end
 		else
 			AddCustomMenuItem("Add Fav Friend", function() self:AddFavFriend(name) end)
-			if data.status == self.PlayerStatus.Offline and self.SavedVars.groupInvite == self.AllFavNone.All then
+			if data.status == self.PlayerStatus.Offline and self.SV.groupInvite == self.AllFavNone.All then
 				AddCustomMenuItem("Invite to Group", function() GroupInviteByName(name) end)
 			end
 		end
@@ -462,7 +494,7 @@ Outputs:			None
 Description:	Adds the name to the Fav list.
 ------------------------------------------------------------------------------------------------]]--
 function SSF:AddFavFriend(name)
-	self.SavedVars.Favs[name] = true
+	self.SV.Favs[name] = true
 	self:DebugMsg(zo_strformat("<<1>> added to Fav Friends.", name))
 	FLM:BuildMasterList()
 	FL:RefreshFilters()
@@ -476,7 +508,7 @@ Outputs:			None
 Description:	Removes the name from the Fav list.
 ------------------------------------------------------------------------------------------------]]--
 function SSF:RemoveFavFriend(name)
-	self.SavedVars.Favs[name] = nil
+	self.SV.Favs[name] = nil
 	self:DebugMsg(zo_strformat("<<1>> removed from Fav Friends.", name))
 	FLM:BuildMasterList()
 	FL:RefreshFilters()
@@ -492,7 +524,7 @@ Description:	Returns the index of the curent character from the saved vars table
 function SSF:GetCharacterIndex()
 	local index
 	local id = GetCurrentCharacterId()
-	for i, v in ipairs(self.SavedVars.Characters) do
+	for i, v in ipairs(self.SV.Characters) do
 		if v.id == id then
 			index = i
 			break
@@ -518,16 +550,16 @@ function SSF:OnPlayerActivated(eventCode, initial)
 		self:SettingsChanged()
 		if self.initialized then self:DebugMsg("Initialized.") end
 		local i = self:GetCharacterIndex()
-		self:DebugMsg(zo_strformat("Character \"<<1>>\" (<<2>>) loaded.", self.SavedVars.Characters[i].name, self.SavedVars.Characters[i].id))
-		if self.SavedVars.accountOverrideEnabled and self.SavedVars.accountOverrideLogin then
-			SelectPlayerStatus(self.SavedVars.accountOverride)
-			self:DebugMsg(zo_strformat("Player status set to <<1>>", self.SavedVars.accountOverride))
+		self:DebugMsg(zo_strformat("Character \"<<1>>\" (<<2>>) loaded.", self.SV.Characters[i].name, self.SV.Characters[i].id))
+		if self.SV.accountOverrideEnabled and self.SV.accountOverrideLogin then
+			SelectPlayerStatus(self.SV.accountOverride)
+			self:DebugMsg(zo_strformat("Player status set to <<1>>", self.SV.accountOverride))
 		elseif
-			self.SavedVars.Characters[i].charOverride ~= self.PlayerStatus.Disabled and self.SavedVars.Characters[i].charOverrideLogin then
-			SelectPlayerStatus(self.SavedVars.Characters[i].charOverride)
-			self:DebugMsg(zo_strformat("Player status set to <<1>>", self.SavedVars.Characters[i].charOverride))
+			self.SV.Characters[i].charOverride ~= self.PlayerStatus.Disabled and self.SV.Characters[i].charOverrideLogin then
+			SelectPlayerStatus(self.SV.Characters[i].charOverride)
+			self:DebugMsg(zo_strformat("Player status set to <<1>>", self.SV.Characters[i].charOverride))
 		end
-		if self.SavedVars.offlineNotice and GetPlayerStatus() == self.PlayerStatus.Offline then
+		if self.SV.offlineNotice and GetPlayerStatus() == self.PlayerStatus.Offline then
 			self.Notifications:Notify("You are set to offline.")
 		end
 	end
@@ -550,7 +582,7 @@ Description:	Fired when there is a chat message. Checking for outgoing whispers 
 function SSF:OnEventChatMessageChannel(eventCode, channelType, fromName, text, isCustomerService, fromDisplayName)
 	if channelType ~= CHAT_CHANNEL_WHISPER_SENT then return end
 	self:DebugMsg("OnEventChatMessageChannel event fired.")
-	if GetPlayerStatus() == self.PlayerStatus.Offline and self.SavedVars.whisperNotice then
+	if GetPlayerStatus() == self.PlayerStatus.Offline and self.SV.whisperNotice then
 		self.Notifications:Notify("You are set to offline and cannot receive replies to whispers.")
 	end
 end
@@ -563,9 +595,9 @@ Outputs:			None
 Description:	Fired when the player first loads in after a settings reset is forced
 ------------------------------------------------------------------------------------------------]]--
 function SSF:SettingsChanged()
-	if self.SavedVars.settingsChanged then 
+	if self.SV.settingsChanged then 
 		self:SendToChat(zo_strformat("Static's Social Features updated to <<1>>. Settings have been reset.", self.addonVersion))
-		self.SavedVars.settingsChanged = false
+		self.SV.settingsChanged = false
 	end
 end
 
@@ -580,7 +612,7 @@ Description:	Formats text to be sent to the chat box for the user. Bools will be
 							line within the message. Only the first line gets the add-on prefix.
 ------------------------------------------------------------------------------------------------]]--
 function SSF:SendToChat(inputString, ...)
-	if not self.SavedVars.chatMsgEnabled then return end
+	if not self.SV.chatMsgEnabled then return end
 	if inputString == false then return end
 	local Args = {...}
 	local Output = {}
@@ -610,7 +642,7 @@ Outputs:			None
 Description:	Checks if debugging mode is on and if so, sends the input message to chat.
 ------------------------------------------------------------------------------------------------]]--
 function SSF:DebugMsg(inputString)
-	if not self.SavedVars.debugMode then return end
+	if not self.SV.debugMode then return end
 	if inputString == false then return end
 	self:SendToChat("[DEBUG] " .. inputString)
 end

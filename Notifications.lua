@@ -27,7 +27,7 @@ Description:	Initializes all of the variables and tables.
 ------------------------------------------------------------------------------------------------]]--
 function Notifications:Initialize(Parent)
   self.Parent = Parent
-  local SV = Parent.SavedVars
+  local SV = Parent.SV
   self.NotificationHandlers = {
     [Parent.NotificationTypes.Chat] = function(message)
       if not message then return end
@@ -55,7 +55,7 @@ Description:	Updates the notification settings.
 ------------------------------------------------------------------------------------------------]]--
 function Notifications:Notify(message)
   local Parent = self:GetParent()
-  local SV = Parent.SavedVars
+  local SV = Parent.SV
   self.NotificationHandlers[SV.notificationType](message)
 end
 

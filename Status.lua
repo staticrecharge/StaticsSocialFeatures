@@ -32,8 +32,8 @@ function Status:Initialize(Parent)
   self.updateInterval = 1000 -- ms
   self.afkAccumulator = 0 -- s
 
-  local afkEnabled = Parent.SavedVars.afkTimerEnabled
-  local offlineEnabled = Parent.SavedVars.offlineTimerEnabled
+  local afkEnabled = Parent.SV.afkTimerEnabled
+  local offlineEnabled = Parent.SV.offlineTimerEnabled
 
   if afkEnabled then
     EM:RegisterForUpdate(self.afkEventSpace, self.updateInterval, function() self:PlayerIdle() end)
@@ -43,7 +43,7 @@ function Status:Initialize(Parent)
     -- wait for character to load in before timing
     EM:RegisterForEvent(self.offlineEventSpace, EVENT_PLAYER_ACTIVATED, function(eventCode, initial)
       if initial then
-        Parent.SavedVars.offlineTimerEnd = os.clock() + (Parent.SavedVars.offlineTimeout * 60)
+        Parent.SV.offlineTimerEnd = os.clock() + (Parent.SV.offlineTimeout * 60)
       end
       EM:RegisterForUpdate(self.offlineEventSpace, self.updateInterval, function() self:OfflineTimerUpdate() end)
       EM:UnregisterForEvent(self.offlineEventSpace, EVENT_PLAYER_ACTIVATED)
@@ -60,8 +60,8 @@ Description:	Checks if the player is idle and updates the timer accordingly.
 ------------------------------------------------------------------------------------------------]]--
 function Status:PlayerIdle()
   local Parent = self:GetParent()
-  local afkEnabled = Parent.SavedVars.afkTimerEnabled
-  local afkNotice = Parent.SavedVars.afkNotice
+  local afkEnabled = Parent.SV.afkTimerEnabled
+  local afkNotice = Parent.SV.afkNotice
   -- Unregister timer and quit if setting changed since last update.
   if not afkEnabled then
     self.afkAccumulator = 0
@@ -95,7 +95,7 @@ function Status:PlayerIdle()
     end
   else
     self.afkAccumulator = self.afkAccumulator + 1
-    if self.afkAccumulator >= Parent.SavedVars.afkTimeout and GetPlayerStatus() == Parent.PlayerStatus.Online then
+    if self.afkAccumulator >= Parent.SV.afkTimeout and GetPlayerStatus() == Parent.PlayerStatus.Online then
       SelectPlayerStatus(Parent.PlayerStatus.Away)
       if afkNotice then Parent.Notifications:Notify("Switched to AFK.") end
     end
@@ -124,14 +124,14 @@ Description:	Checks if the offline timer end has been reached if enabled.
 function Status:OfflineTimerUpdate()
   local time = os.clock()
   local Parent = self:GetParent()
-  local offlineEnabled = Parent.SavedVars.offlineTimerEnabled
+  local offlineEnabled = Parent.SV.offlineTimerEnabled
   -- unregister if they already switched to online or if they disabled it.
   if not offlineEnabled or GetPlayerStatus() == Parent.PlayerStatus.Online then
     EM:UnregisterForUpdate(self.offlineEventSpace)
   end
-  if time >= Parent.SavedVars.offlineTimerEnd and GetPlayerStatus() == Parent.PlayerStatus.Offline then    
+  if time >= Parent.SV.offlineTimerEnd and GetPlayerStatus() == Parent.PlayerStatus.Offline then    
     SelectPlayerStatus(Parent.PlayerStatus.Online)
-    if Parent.SavedVars.offlineTimerNotice then Parent.Notifications:Notify("Automatically set to Online.") end
+    if Parent.SV.offlineTimerNotice then Parent.Notifications:Notify("Automatically set to Online.") end
   end
 end
 

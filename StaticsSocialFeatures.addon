@@ -1,8 +1,8 @@
-## Title: |cFF6600Static's Social Features|r 1.0.4
+## Title: |cFF6600Static's Social Features|r 1.0.5
 ## Author: |CFF0000Static_Recharge|r
-## Version: 1.0.4
+## Version: 1.0.5
 ## AddOnVersion: 1
-## APIVersion: 101046 101047
+## APIVersion: 101047
 ## DependsOn: LibAddonMenu-2.0>=38 LibCustomMenu>=730
 ## SavedVariables: StaticsSocialFeaturesAccountWideVars
 ## DisableSavedVariablesAutoSaving: 1

@@ -1,3 +1,6 @@
+1.0.5
+  - Added mutual guilds info and option to group list
+
 1.0.4
   - Add/Remove Fav friends
   - Fav friend icon options
@@ -10,3 +13,5 @@
   - Friend login/logout message control
   - Context menu and keybind strip additions
   - Offline timer (works through reload)
+  - Notification for whispering someone while offline
+  - Show mutual guilds for friends in tooltip
