@@ -1,7 +1,7 @@
 --[[------------------------------------------------------------------------------------------------
 Title:					Static's Social Features
 Author:					Static_Recharge
-Version:				1.0.5
+Version:				1.1.0
 Description:		Adds specific social featues.
 ------------------------------------------------------------------------------------------------]]--
 
@@ -36,7 +36,7 @@ Description:	Initializes all of the variables, object managers, slash commands a
 function SSF:Initialize()
 	-- Static definitions
 	self.addonName = "StaticsSocialFeatures"
-	self.addonVersion = "1.0.5"
+	self.addonVersion = "1.1.0"
 	self.varsVersion = 2 -- SHOULD BE 2
 	self.author = "|CFF0000Static_Recharge|r"
 	self.chatPrefix = "|cFF6600[SSF]:|r "
@@ -161,6 +161,7 @@ function SSF:Initialize()
 	self.Settings = StaticsSocialFeaturesInitSettings(self)
 	self.Status = StaticsSocialFeaturesInitStatus(self)
 	self.Notifications = StaticsSocialFeaturesInitNotifications(self)
+	self.Lists = StaticsSocialFeaturesInitLists(self)
 
 	-- ZO Hooks
 	self:FriendListHook()
@@ -183,7 +184,6 @@ function SSF:Initialize()
 	EM:RegisterForEvent(self.addonName, EVENT_CHAT_MESSAGE_CHANNEL, function(...) self:OnEventChatMessageChannel(...) end)
 
 	-- Slash commands declarations
-	-- Menu slash command is defined in SettingsManager.lua
 	--SLASH_COMMANDS["/ssftest"] = function(...) self:Test(...) end
 
 	-- Keybindings associations
@@ -613,25 +613,49 @@ Description:	Formats text to be sent to the chat box for the user. Bools will be
 ------------------------------------------------------------------------------------------------]]--
 function SSF:SendToChat(inputString, ...)
 	if not self.SV.chatMsgEnabled then return end
-	if inputString == false then return end
+	if inputString == false or inputString == "" then return end
 	local Args = {...}
 	local Output = {}
-	table.insert(Output, self.chatPrefix)
-	table.insert(Output, self.chatTextColor)
-	table.insert(Output, inputString) 
-	table.insert(Output, self.chatSuffix)
+	inputString = self:BoolConvert(inputString)
+	table.insert(Output, zo_strformat("<<1>><<2>><<3>><<4>>", self.chatPrefix, self.chatTextColor, inputString, self.chatSuffix))
 	if #Args > 0 then
 		for i,v in ipairs(Args) do
-			if type(v) == boolean then
-				if v then v = "true" else v = "false" end
-			end
-		  table.insert(Output, "\n")
-			table.insert(Output, self.chatTextColor)
-	    table.insert(Output, v) 
-	    table.insert(Output, self.chatSuffix)
+			v = self:BoolConvert(v)
+		  table.insert(Output, zo_strformat("\n<<1>><<2>><<3>>", self.chatTextColor, v, self.chatSuffix))
 		end
 	end
 	CS:AddMessage(table.concat(Output))
+end
+
+
+--[[------------------------------------------------------------------------------------------------
+function function SSF:BoolConvert(bool, returnType)
+Inputs:				bool 						- input bool to convert
+							returnType 			- how the output should be formated (optional, 1 default)
+Outputs:			string 					- string containing the converted bool, or the input if not a bool
+Description:	Returns a converted bool or the input if not a bool.
+returnType: 	1 	- "true/false"
+							2		- "on/off"
+							3		- "yes/no"
+							4		- "positive/negative"
+------------------------------------------------------------------------------------------------]]--
+function SSF:BoolConvert(bool, returnType)
+	local Responses = {
+		{"true", "false"},
+		{"on", "off"},
+		{"yes", "no"},
+		{"positive", "negative"},
+	}
+
+	if type(bool) == "boolean" then
+		if not returnType then returnType = 1 end
+		if bool then
+			return Responses[returnType][1]
+		else
+			return Responses[returnType][2]
+		end
+	end
+	return bool
 end
 
 
