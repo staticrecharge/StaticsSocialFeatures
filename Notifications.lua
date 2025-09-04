@@ -31,7 +31,7 @@ function Notifications:Initialize(Parent)
   self.NotificationHandlers = {
     [Parent.NotificationTypes.Chat] = function(message)
       if not message then return end
-      Parent:SendToChat(message)
+      Parent:Chat(message)
       if SV.notificationSound then PlaySound(SV.notificationSound) end
     end,
     [Parent.NotificationTypes["Center Screen"]] = function(message)

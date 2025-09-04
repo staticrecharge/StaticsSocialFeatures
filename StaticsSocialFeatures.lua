@@ -596,14 +596,14 @@ Description:	Fired when the player first loads in after a settings reset is forc
 ------------------------------------------------------------------------------------------------]]--
 function SSF:SettingsChanged()
 	if self.SV.settingsChanged then 
-		self:SendToChat(zo_strformat("Static's Social Features updated to <<1>>. Settings have been reset.", self.addonVersion))
+		self:Chat(zo_strformat("Static's Social Features updated to <<1>>. Settings have been reset.", self.addonVersion))
 		self.SV.settingsChanged = false
 	end
 end
 
 
 --[[------------------------------------------------------------------------------------------------
-function SSF:SendToChat(inputString, ...)
+function SSF:Chat(inputString, ...)
 Inputs:				inputString			- The input string to be formatted and sent to chat. Can be bools.
 							...							- More inputs to be placed on new lines within the same message.
 Outputs:			None
@@ -611,20 +611,21 @@ Description:	Formats text to be sent to the chat box for the user. Bools will be
 							"true" or "false" text formats. All inputs after the first will be placed on a new 
 							line within the message. Only the first line gets the add-on prefix.
 ------------------------------------------------------------------------------------------------]]--
-function SSF:SendToChat(inputString, ...)
-	if not self.SV.chatMsgEnabled then return end
-	if inputString == false or inputString == "" then return end
+function SSF:Chat(inputString, ...)
+	-- if chat isn't enabled or the string is empty or nil then return
+	if not self.SV.chatMsgEnable or inputString == false or inputString == "" then return end
+
 	local Args = {...}
-	local Output = {}
-	inputString = self:BoolConvert(inputString)
-	table.insert(Output, zo_strformat("<<1>><<2>><<3>><<4>>", self.chatPrefix, self.chatTextColor, inputString, self.chatSuffix))
+
+	-- Print first line
+	CS:AddMessage(zo_strformat("<<1>><<2>><<3>><<4>>", self.chatPrefix, self.chatTextColor, inputString, self.chatSuffix))
+
+	-- Print subsequent lines if any
 	if #Args > 0 then
 		for i,v in ipairs(Args) do
-			v = self:BoolConvert(v)
-		  table.insert(Output, zo_strformat("\n<<1>><<2>><<3>>", self.chatTextColor, v, self.chatSuffix))
+		  CS:AddMessage(zo_strformat("\n<<1>><<2>><<3>>", self.chatTextColor, v, self.chatSuffix))
 		end
 	end
-	CS:AddMessage(table.concat(Output))
 end
 
 
@@ -640,6 +641,8 @@ returnType: 	1 	- "true/false"
 							4		- "positive/negative"
 ------------------------------------------------------------------------------------------------]]--
 function SSF:BoolConvert(bool, returnType)
+	if type(bool) ~= "boolean" then return end
+
 	local Responses = {
 		{"true", "false"},
 		{"on", "off"},
@@ -647,14 +650,13 @@ function SSF:BoolConvert(bool, returnType)
 		{"positive", "negative"},
 	}
 
-	if type(bool) == "boolean" then
-		if not returnType then returnType = 1 end
-		if bool then
-			return Responses[returnType][1]
-		else
-			return Responses[returnType][2]
-		end
-	end
+  if not returnType then returnType = LIBSTATIC_BOOLTYPE_TF end
+  if bool then
+    return Responses[returnType][1]
+  else
+    return Responses[returnType][2]
+  end
+
 	return bool
 end
 
@@ -666,9 +668,10 @@ Outputs:			None
 Description:	Checks if debugging mode is on and if so, sends the input message to chat.
 ------------------------------------------------------------------------------------------------]]--
 function SSF:DebugMsg(inputString)
-	if not self.SV.debugMode then return end
-	if inputString == false then return end
-	self:SendToChat("[DEBUG] " .. inputString)
+	-- if debugging isn't enabled or the string is empty or nil then return
+	if not self.SV.debugMode or inputString == false or inputString == "" then return end
+
+	self:Chat(zo_strformat("[DEBUG] <<1>>", inputString))
 end
 
 
