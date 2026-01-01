@@ -42,6 +42,7 @@ function SSF:Initialize()
 	self.chatPrefix = "|cFF6600[SSF]:|r "
 	self.chatTextColor = "|cFFFFFF"
 	self.chatSuffix = "|r"
+
 	self.PlayerStatus = {
 		Disabled = 5,
 		Online = PLAYER_STATUS_ONLINE,
@@ -51,6 +52,7 @@ function SSF:Initialize()
 		Keys = {"Disabled", "Online", "Away", "Do Not Disturb", "Offline"},
 		Values = {5, PLAYER_STATUS_ONLINE, PLAYER_STATUS_AWAY, PLAYER_STATUS_DO_NOT_DISTURB, PLAYER_STATUS_OFFLINE},
 	}
+
 	self.AllFavNone = {
 		All = 1,
 		Fav = 2,
@@ -58,6 +60,7 @@ function SSF:Initialize()
 		Keys = {"All", "Fav", "None"},
 		Values = {1, 2, 3},
 	}
+
 	self.NotificationTypes = {
     ["Chat"] = 1,
     ["Center Screen"] = 2,
@@ -65,6 +68,7 @@ function SSF:Initialize()
 		Keys = {"Chat", "Center Screen", "Alert"},
 		Values = {1, 2, 3},
   }
+
   self.NotificationSizes = {
     Small = CSA_CATEGORY_SMALL_TEXT,
     Medium = CSA_CATEGORY_MAJOR_TEXT,
@@ -72,6 +76,7 @@ function SSF:Initialize()
 		Keys = {"Small", "Medium", "Large"},
 		Values = {CSA_CATEGORY_SMALL_TEXT, CSA_CATEGORY_MAJOR_TEXT, CSA_CATEGORY_LARGE_TEXT},
   }
+
 	self.NotificationSounds = {
 		["None"] = SOUNDS.NONE,
 		["Book Acquired"] = SOUNDS.BOOK_ACQUIRED,
@@ -81,6 +86,7 @@ function SSF:Initialize()
 		Keys = {"None", "Book", "Default", "Map Open", "Error"},
 		Values = {SOUNDS.NONE, SOUNDS.BOOK_ACQUIRED, SOUNDS.DEFAULT_CLICK, SOUNDS.MAP_WINDOW_OPEN, SOUNDS.GENERAL_ALERT_ERROR},
 	}
+
 	self.IconTextures = {
 		"/esoui/art/compass/target_gold_star.dds",					-- Gold Star
 		"/esoui/art/compass/target_blue_square.dds",				-- Blue Square
@@ -98,6 +104,7 @@ function SSF:Initialize()
 		"/esoui/art/tutorial/journal_tabicon_quest_up.dds",	-- Quest Icon
 		"/esoui/art/buttons/featuredot_active.dds",					-- Feature Dot
 	}
+
 	self.Defaults = {
 		chatMsgEnabled = true,
 		debugMode = false,
@@ -132,17 +139,24 @@ function SSF:Initialize()
 		offlineTimerNotice = true,
 		offlineTimerEnd = nil,
 		sharedGuildsGroup = true,
+		Friends = {},
+		Ignored = {},
 	}
+
+	-- Session variables
 	self.chatRouterEventRedirected = false
 
 	-- Saved variables initialization
 	self.SV = ZO_SavedVars:NewAccountWide("StaticsSocialFeaturesAccountWideVars", self.varsVersion, nil, self.Defaults, nil)
+
 	-- Update Character list (preserve any settings)
 	local NewData = {}
+
 	for i=1, GetNumCharacters() do
 		local name, _, _, _, _, _, id, _ = GetCharacterInfo(i)
 		local found = false
 		name = zo_strformat("<<1>>", name)
+
 		for index, value in ipairs(self.SV.Characters) do
 			if value.id == id then
 				NewData[i] = {name = name, id = id, charOverride = value.charOverride, charOverrideLogin = value.charOverrideLogin, charOverrideLogout = value.charOverrideLogout}
@@ -150,10 +164,12 @@ function SSF:Initialize()
 				break
 			end
 		end
+
 		if not found then
 			NewData[i] = {name = name, id = id, charOverride = self.Defaults.charOverride, charOverrideLogin = self.Defaults.charOverrideLogin, charOverrideLogout = self.Defaults.charOverrideLogout}
 		end
 	end
+
 	table.sort(NewData, function(a, b) return a.name < b.name end)
 	self.SV.Characters = NewData
 
@@ -623,7 +639,7 @@ function SSF:Chat(inputString, ...)
 	-- Print subsequent lines if any
 	if #Args > 0 then
 		for i,v in ipairs(Args) do
-		  CS:AddMessage(zo_strformat("\n<<1>><<2>><<3>>", self.chatTextColor, v, self.chatSuffix))
+		  CS:AddMessage(zo_strformat("<<1>><<2>><<3>>", self.chatTextColor, v, self.chatSuffix))
 		end
 	end
 end
