@@ -9,15 +9,9 @@ Description:		Adds specific social featues.
 --[[------------------------------------------------------------------------------------------------
 Libraries and Aliases
 ------------------------------------------------------------------------------------------------]]--
-local LAM2 = LibAddonMenu2
-local LCM = LibCustomMenu
 local CS = CHAT_SYSTEM
 local EM = EVENT_MANAGER
-local FLM = FRIENDS_LIST_MANAGER
-local FL = FRIENDS_LIST
 local CR = CHAT_ROUTER
-local CSA = CENTER_SCREEN_ANNOUNCE
-local CDM = ZO_COLLECTIBLE_DATA_MANAGER
 
 
 --[[------------------------------------------------------------------------------------------------
@@ -39,6 +33,7 @@ function SSF:Initialize()
 	self.addonName = "StaticsSocialFeatures"
 	self.addonVersion = "1.2.0"
 	self.varsVersion = 2 -- SHOULD BE 2
+	self.charVarsVersion = 1
 	self.author = "|CFF0000Static_Recharge|r"
 	self.chatPrefix = "|cFF6600[SSF]:|r "
 	self.chatTextColor = "|cFFFFFF"
@@ -153,21 +148,11 @@ function SSF:Initialize()
 
 	-- Session variables
 	self.chatRouterEventRedirected = false
-	self.SoloMount = {
-		Keys = {},
-		Values = {},
-	}
-	self.MultiMount = {
-		Keys = {},
-		Values = {},
-	}
-	self.currentMount = nil
-	self:UpdateMountData()
 	
 
 	-- Saved variables initialization
 	self.SV = ZO_SavedVars:NewAccountWide("StaticsSocialFeaturesAccountWideVars", self.varsVersion, nil, self.Defaults, nil)
-	self.CH = ZO_SavedVars:NewCharacterIdSettings("StaticsSocialFeaturesCharVars", self.varsVersion, nil, self.CharDefaults, nil)
+	self.CH = ZO_SavedVars:NewCharacterIdSettings("StaticsSocialFeaturesCharVars", self.charVarsVersion, nil, self.CharDefaults, nil)
 	--RequestAddOnSavedVariablesPrioritySave(self.addonName)
 
 	-- Update Character list (preserve any settings)
@@ -195,136 +180,20 @@ function SSF:Initialize()
 	self.SV.Characters = NewData
 
 	-- Child Initializations
-	self.Settings = StaticsSocialFeaturesInitSettings(self)
 	self.Status = StaticsSocialFeaturesInitStatus(self)
 	self.Notifications = StaticsSocialFeaturesInitNotifications(self)
 	self.Lists = StaticsSocialFeaturesInitLists(self)
+	self.Mounts = StaticsSocialFeaturesInitMounts(self)
+	self.Settings = StaticsSocialFeaturesInitSettings(self)
 
 	-- ZO Hooks
-	self:FriendListHook()
-	self:FriendEntryHook()
-	self:FriendListSortHook()
 	self:LogoutQuitHook()
 	self:FriendMessageHook()
-	self:FriendKeybindStripHook()
-	self:FriendListTooltipHook()
-	self:GroupListTooltipHook()
-
-	-- Update Icon from settings
-	self:UpdateFavIcon()
-
-	-- Register Context Menu
-	self:FriendListContextMenu()
-	self:MountContextMenu()
-
-	-- Event Registrations
-	EM:RegisterForEvent(self.addonName, EVENT_PLAYER_ACTIVATED, function(...) self:OnPlayerActivated(...) end)
-	EM:RegisterForEvent(self.addonName, EVENT_CHAT_MESSAGE_CHANNEL, function(...) self:OnEventChatMessageChannel(...) end)
-	EM:RegisterForEvent(self.addonName, EVENT_GROUP_MEMBER_JOINED, function(...) self:OnGroupMemberJoined(...) end)
-	EM:RegisterForEvent(self.addonName, EVENT_GROUP_MEMBER_LEFT, function(...) self:OnGroupMemberLeft(...) end)
 
 	-- Slash commands declarations
 	--SLASH_COMMANDS["/ssftest"] = function(...) self:Test(...) end
 
-	-- Keybindings associations
-	ZO_CreateStringId("SI_BINDING_NAME_MOUNT_PLAYER", "Mount Group Member")
-
 	self.initialized = true
-end
-
-
---[[------------------------------------------------------------------------------------------------
-function SSF:UpdateFavIcon()
-Inputs:			  None
-Outputs:			None
-Description:	Updates the display of the fav icon.
-------------------------------------------------------------------------------------------------]]--
-function SSF:UpdateFavIcon()
-	if self.SV.favIconInheritColor then
-		self.favIcon = zo_strformat("|t<<1>>%:<<2>>%:<<3>>:inheritcolor|t", self.SV.favIconSize, self.SV.favIconSize, self.SV.favIconTexture)
-	else
-		self.favIcon = zo_strformat("|t<<1>>%:<<2>>%:<<3>>|t", self.SV.favIconSize, self.SV.favIconSize, self.SV.favIconTexture)
-	end
-	FLM:BuildMasterList()
-	FL:RefreshFilters()
-	self:DebugMsg("Fav icon updated.")
-end
-
-
---[[------------------------------------------------------------------------------------------------
-function SSF:FriendListHook()
-Inputs:			  None
-Outputs:			None
-Description:	Hooks into the friends list manager to add Fav tag to all entries as required.
-------------------------------------------------------------------------------------------------]]--
-function SSF:FriendListHook()
-	ZO_PostHook(FLM, 'BuildMasterList', function(self_)
-		self:DebugMsg("Friend List prehook started.")
-		for i, friendData in ipairs(self_.masterList) do
-			if self.SV.Favs[friendData.displayName] then
-				friendData.favs = false -- ZO sort function sorts false entries before true ones
-			else
-				friendData.favs = true
-			end
-		end
-	end)
-end
-
-
---[[------------------------------------------------------------------------------------------------
-function SSF:FriendEntryHook()
-Inputs:			  None
-Outputs:			None
-Description:	Hooks into the friends list manager to add the icon for Fav friends.
-------------------------------------------------------------------------------------------------]]--
-function SSF:FriendEntryHook()
-	ZO_PostHook(FLM, 'SetupEntry', function(self_, control, data, selected)
-		--self:DebugMsg("Friend Listy Entry prehook started.")
-		local displayNameLabel = control:GetNamedChild("DisplayName")
-		if displayNameLabel then
-			if self.SV.Favs[data.displayName] then
-				displayNameLabel:SetText(zo_strformat("<<1>> <<2>>", self.favIcon, ZO_FormatUserFacingDisplayName(data.displayName)))
-			end
-		end
-	end)
-end
-
-
---[[------------------------------------------------------------------------------------------------
-function SSF:FriendListSortHook()
-Inputs:			  None
-Outputs:			None
-Description:	Hooks into the friends list to sort Fav friends to the top.
-------------------------------------------------------------------------------------------------]]--
-function SSF:FriendListSortHook()
-	ZO_PreHook(FL, 'SortScrollList', function(self_)
-		self:DebugMsg("Friend List Sort prehook started.")
-		if self_.currentSortOrder == ZO_SORT_ORDER_UP then
-			for i, friendData in ipairs(FLM.masterList) do
-				if self.SV.Favs[friendData.displayName] then
-					friendData.favs = false -- ZO sort function sorts false entries before true ones
-				else
-					friendData.favs = true
-				end
-			end
-		else
-			for i, friendData in ipairs(FLM.masterList) do
-				if self.SV.Favs[friendData.displayName] then
-					friendData.favs = true -- ZO sort function sorts false entries before true ones
-				else
-					friendData.favs = false
-				end
-			end
-		end
-		local prevSortKey = "status"
-		if self_.currentSortKey ~= "favs" then
-			prevSortKey = self_.currentSortKey
-		end
-		FRIENDS_LIST_ENTRY_SORT_KEYS["favs"] = {tiebreaker = prevSortKey}
-		if self.SV.favFriendsTop then
-			self_.currentSortKey = "favs"
-		end
-	end)
 end
 
 
@@ -363,7 +232,7 @@ function SSF:FriendMessageHook()
 	function self:OnFriendStatusChanged(eventCode, displayName, characterName, oldStatus, newStatus)
 		self:DebugMsg("Friend Message prehook started.")
 		if self.SV.friendMsg == self.AllFavNone.None then return end
-		if self.SV.friendMsg == self.AllFavNone.All or (self.SV.friendMsg == self.AllFavNone.Fav and self.SV.Favs[displayName]) then
+		if self.SV.friendMsg == self.AllFavNone.Fav and self.SV.Favs[displayName] then
 			if not self.SV.friendMsgChat and self.SV.notificationType ~= self.NotificationTypes.Chat then
 				local wasOnline = oldStatus ~= self.PlayerStatus.Offline
 				local isOnline = newStatus ~= self.PlayerStatus.Offline
@@ -380,179 +249,11 @@ function SSF:FriendMessageHook()
 			end
 		end
 	end
-	if self.SV.friendMsg ~= self.AllFavNone.None and self.chatRouterEventRedirected == false then
+	if self.SV.friendMsg ~= self.AllFavNone.All and self.chatRouterEventRedirected == false then
 		EM:UnregisterForEvent("ChatRouter", EVENT_FRIEND_PLAYER_STATUS_CHANGED)
 		EM:RegisterForEvent("ChatRouter", EVENT_FRIEND_PLAYER_STATUS_CHANGED, function(...) self:OnFriendStatusChanged(...) end)
 		self.chatRouterEventRedirected = true
 	end
-end
-
-
---[[------------------------------------------------------------------------------------------------
-function SSF:FriendKeybindStripHook()
-Inputs:			  None
-Outputs:			None
-Description:	Hooks into the friends keybind strip to add the invite and whisper option for offline 
-							favs as well as the add/remove fav friend button.
-------------------------------------------------------------------------------------------------]]--
-function SSF:FriendKeybindStripHook()
-	ZO_PostHook(FL, 'InitializeKeybindDescriptors', function(self_)
-		self:DebugMsg("Friend Keybind Strip prehook started.")
-		-- Group Invite
-		self_.keybindStripDescriptor[2].visible = function()
-			if IsGroupModificationAvailable() and self_.mouseOverRow then
-				local data = ZO_ScrollList_GetData(self_.mouseOverRow)
-				if data and data.hasCharacter and (data.online or (self.SV.Favs[data.displayName] and self.SV.groupInvite ~= self.AllFavNone.None) or self.SV.groupInvite == self.AllFavNone.All) then
-					return true
-				end
-			end
-			return false
-		end
-		-- Add/Remove Fav
-		self_.keybindStripDescriptor[3] = {
-			name = function()
-				if self_.mouseOverRow then
-					local data = ZO_ScrollList_GetData(self_.mouseOverRow)
-					if self.SV.Favs[data.displayName] then
-						return "Remove Fav"
-					end
-				end
-				return "Add Fav"
-			end,
-			keybind = "UI_SHORTCUT_QUATERNARY",
-			callback = function()
-				if self_.mouseOverRow then
-					local data = ZO_ScrollList_GetData(self_.mouseOverRow)
-					if self.SV.Favs[data.displayName] then
-						self:RemoveFavFriend(data.displayName)
-					else
-						self:AddFavFriend(data.displayName)
-					end
-				end
-			end,
-			visible = function()
-				if self_.mouseOverRow then
-					return true
-				end
-				return false
-			end,
-			--icon = self.SV.favIconTexture,
-		}
-	end)
-end
-
-
---[[------------------------------------------------------------------------------------------------
-function SSF:FriendListTooltipHook()
-Inputs:			  None
-Outputs:			None
-Description:	Hooks into the friends list to add mutual guilds to the tooltips.
-------------------------------------------------------------------------------------------------]]--
-function SSF:FriendListTooltipHook()
-	ZO_PostHook(ZO_SocialListKeyboard, 'DisplayName_OnMouseEnter', function(self_, control)
-		--self:DebugMsg("Friend List Tooltip prehook started.")
-		if self.SV.sharedGuilds == self.AllFavNone.None then return end
-		local row = control:GetParent()
-    local data = ZO_ScrollList_GetData(row)
-		local guilds = {}
-		for i=1, GetNumGuilds() do
-			for j=1, GetGuildInfo(GetGuildId(i)) do
-				local name = GetGuildMemberInfo(GetGuildId(i),j)
-				if name == data.displayName then
-					table.insert(guilds, GetGuildName(GetGuildId(i)))
-					break
-				end
-			end
-		end
-		guilds = table.concat(guilds, "\n")
-		if data and data.hasCharacter and guilds ~= "" and (self.SV.sharedGuilds == self.AllFavNone.All or (self.SV.sharedGuilds == self.AllFavNone.Fav and  self.SV.Favs[data.displayName]))then
-			SetTooltipText(InformationTooltip, guilds)
-		end
-	end)
-end
-
-
---[[------------------------------------------------------------------------------------------------
-function SSF:GroupListTooltipHook()
-Inputs:			  None
-Outputs:			None
-Description:	Hooks into the group list to sort Fav friends to the top.
-------------------------------------------------------------------------------------------------]]--
-function SSF:GroupListTooltipHook()
-	ZO_PostHook('ZO_GroupListRowCharacterName_OnMouseEnter', function(control)
-		--self:DebugMsg("Group List Tooltip prehook started.")
-		if not self.SV.sharedGuildsGroup then return end
-    local data = ZO_ScrollList_GetData(control.row)
-		if data.displayName == GetDisplayName() then return end
-		local guilds = {}
-		for i=1, GetNumGuilds() do
-			for j=1, GetGuildInfo(GetGuildId(i)) do
-				local name = GetGuildMemberInfo(GetGuildId(i),j)
-				if name == data.displayName then
-					table.insert(guilds, GetGuildName(GetGuildId(i)))
-					break
-				end
-			end
-		end
-		guilds = table.concat(guilds, "\n")
-		if data and data.hasCharacter and guilds ~= "" then
-			SetTooltipText(InformationTooltip, guilds) 
-		end
-	end)
-end
-
-
---[[------------------------------------------------------------------------------------------------
-function SSF:FriendListContextMenu()
-Inputs:			  None
-Outputs:			None
-Description:	Adds an entry to the friends list context menu.
-------------------------------------------------------------------------------------------------]]--
-function SSF:FriendListContextMenu()
-	local function AddItem(data)
-		self:DebugMsg("Friend List Context Menu started.")
-		local name = data.displayName
-		if self.SV.Favs[name] then 
-			AddCustomMenuItem("Remove Fav Friend", function() self:RemoveFavFriend(name) end)
-			if data.status == self.PlayerStatus.Offline and self.SV.groupInvite ~= self.AllFavNone.None then
-				AddCustomMenuItem("Invite to Group", function() GroupInviteByName(name) end)
-			end
-		else
-			AddCustomMenuItem("Add Fav Friend", function() self:AddFavFriend(name) end)
-			if data.status == self.PlayerStatus.Offline and self.SV.groupInvite == self.AllFavNone.All then
-				AddCustomMenuItem("Invite to Group", function() GroupInviteByName(name) end)
-			end
-		end
-	end
-	LCM:RegisterFriendsListContextMenu(AddItem, LCM.CATEGORY_LATE)
-end
-
-
---[[------------------------------------------------------------------------------------------------
-function SSF:AddFavFriend(name)
-Inputs:			  name 						- The @name to add to the fav friends list
-Outputs:			None
-Description:	Adds the name to the Fav list.
-------------------------------------------------------------------------------------------------]]--
-function SSF:AddFavFriend(name)
-	self.SV.Favs[name] = true
-	self:DebugMsg(zo_strformat("<<1>> added to Fav Friends.", name))
-	FLM:BuildMasterList()
-	FL:RefreshFilters()
-end
-
-
---[[------------------------------------------------------------------------------------------------
-function SSF:RemoveFavFriend(name)
-Inputs:			  name 						- The @name to remove from the fav friends list
-Outputs:			None
-Description:	Removes the name from the Fav list.
-------------------------------------------------------------------------------------------------]]--
-function SSF:RemoveFavFriend(name)
-	self.SV.Favs[name] = nil
-	self:DebugMsg(zo_strformat("<<1>> removed from Fav Friends.", name))
-	FLM:BuildMasterList()
-	FL:RefreshFilters()
 end
 
 
@@ -572,221 +273,6 @@ function SSF:GetCharacterIndex()
 		end
 	end
 	return index
-end
-
-
---[[------------------------------------------------------------------------------------------------
-function SSF:OnPlayerActivated(eventCode, initial)
-Inputs:				eventCode				- Internal ZOS event code, not used here.
-							initial					- Indicates if this is the first activation from log-in.
-Outputs:			None
-Description:	Fired when the player character is available after loading screens such as changing 
-							zones, reloadui and logging in. Sets the desired player status for the logged in
-							character, if not disabled.
-------------------------------------------------------------------------------------------------]]--
-function SSF:OnPlayerActivated(eventCode, initial)
-	self:DebugMsg("OnPlayerActivated event fired.")
-	self:DebugMsg(zo_strformat("Player status is <<1>>", GetPlayerStatus()))
-	if initial then
-		self:SettingsChanged()
-		if self.initialized then self:DebugMsg("Initialized.") end
-		local i = self:GetCharacterIndex()
-		self:DebugMsg(zo_strformat("Character \"<<1>>\" (<<2>>) loaded.", self.SV.Characters[i].name, self.SV.Characters[i].id))
-		if self.SV.accountOverrideEnabled and self.SV.accountOverrideLogin then
-			SelectPlayerStatus(self.SV.accountOverride)
-			self:DebugMsg(zo_strformat("Player status set to <<1>>", self.SV.accountOverride))
-		elseif
-			self.SV.Characters[i].charOverride ~= self.PlayerStatus.Disabled and self.SV.Characters[i].charOverrideLogin then
-			SelectPlayerStatus(self.SV.Characters[i].charOverride)
-			self:DebugMsg(zo_strformat("Player status set to <<1>>", self.SV.Characters[i].charOverride))
-		end
-		if self.SV.offlineNotice and GetPlayerStatus() == self.PlayerStatus.Offline then
-			self.Notifications:Notify("You are set to offline.")
-		end
-	end
-	EM:UnregisterForEvent(self.addonName, EVENT_PLAYER_ACTIVATED)
-end
-
-
---[[------------------------------------------------------------------------------------------------
-function SSF:OnEventChatMessageChannel(eventCode, channelType, fromName, text, isCustomerService, fromDisplayName)
-Inputs:				eventCode				- Internal ZOS event code, not used here.
-							channelType			- Global Constant channelType (using CHAT_CHANNEL_WHISPER_SENT)
-							fromName  			- Character name of the sender
-							text 						- body of the message
-							isCustomerService- boolean if the message is from customer service
-							fromDisplayName	- @name of the sender
-Outputs:			None
-Description:	Fired when there is a chat message. Checking for outgoing whispers and notifying if
-							needed.
-------------------------------------------------------------------------------------------------]]--
-function SSF:OnEventChatMessageChannel(eventCode, channelType, fromName, text, isCustomerService, fromDisplayName)
-	if channelType ~= CHAT_CHANNEL_WHISPER_SENT then return end
-	self:DebugMsg("OnEventChatMessageChannel event fired.")
-	if GetPlayerStatus() == self.PlayerStatus.Offline and self.SV.whisperNotice then
-		self.Notifications:Notify("You are set to offline and cannot receive replies to whispers.")
-	end
-end
-
-
---[[------------------------------------------------------------------------------------------------
-function SSF:MountPlayer()
-Inputs:				None
-Outputs:			None
-Description:	Mounts the targetted player
-------------------------------------------------------------------------------------------------]]--
-function SSF:MountPlayer()
-	UseMountAsPassenger(GetRawUnitName("reticleoverplayer"))
-end
-
-
---[[------------------------------------------------------------------------------------------------
-function SSF:UpdateMountData()
-Inputs:				None
-Outputs:			None
-Description:	Updates the mount lists
-------------------------------------------------------------------------------------------------]]--
-function SSF:UpdateMountData()
-	local function IsNotMountCategory(categoryData)
-		return not categoryData:IsOutfitStylesCategory() and not categoryData:IsHousingCategory()
-	end
-
-	local function IsMount(collectibleData)
-		return collectibleData:IsCategoryType(COLLECTIBLE_CATEGORY_TYPE_MOUNT)
-	end
-
-	local SoloMountCollectionData = {}
-	local MultiMountCollectionData = {}
-
-	--Iterate over the main categories and do not use outfits or houses
-	for idx, categoryData in CDM:CategoryIterator({IsNotMountCategory}) do
-		--Iterate over the sub-categories of the current main category and do not use outfits or houses
-		for _, subCategoryData in categoryData:SubcategoryIterator({IsNotMountCategory}) do
-			--Iterate over the sub-categorie's collectibles and only check for mounts collectible type
-			for _, subCatCollectibleData in subCategoryData:CollectibleIterator({IsMount}) do
-				--Check if the mount is owned/unlocked and not blocked
-				if subCatCollectibleData:IsUnlocked() and not subCatCollectibleData:IsBlocked() then
-					local id = subCatCollectibleData:GetId()
-					local isActive = subCatCollectibleData:IsActive(GAMEPLAY_ACTOR_CATEGORY_PLAYER)
-					local name = subCatCollectibleData:GetFormattedName()
-					if isActive then
-						self.currentMount = {
-							id = id,
-							name = name,
-						}
-					end
-					if subCategoryData:GetId() == self.multiRiderSubCatID then
-						table.insert(MultiMountCollectionData, {id = id, name = name})
-					else
-						table.insert(SoloMountCollectionData, {id = id, name = name})
-					end
-				end
-			end
-		end
-	end
-
-	table.sort(MultiMountCollectionData, function(a, b) return a.name < b.name end)
-	table.sort(SoloMountCollectionData, function(a, b) return a.name < b.name end)
-	table.insert(SoloMountCollectionData, 1, {id = 7, name = "-- Random Favorite Mount"}) --offset id by 6, first collectible that's not a mount
-	table.insert(SoloMountCollectionData, 2, {id = 8, name = "-- Random Mount"})
-
-	for index, value in ipairs(MultiMountCollectionData) do
-		self.MultiMount.Values[index] = value.id
-		self.MultiMount.Keys[index] = value.name
-	end
-	for index, value in ipairs(SoloMountCollectionData) do
-		self.SoloMount.Values[index] = value.id
-		self.SoloMount.Keys[index] = value.name
-	end
-end
-
-
---[[------------------------------------------------------------------------------------------------
-function SSF:OnGroupMemberJoined()
-Inputs:				None
-Outputs:			None
-Description:	Updates the mount to the multi mount
-------------------------------------------------------------------------------------------------]]--
-function SSF:OnGroupMemberJoined(eventCode, memberCharacterName, memberDisplayName, isLocalPlayer)
-	if isLocalPlayer and self.CH.multiMountEnable then
-		UseCollectible(self.CH.multiMount, GAMEPLAY_ACTOR_CATEGORY_PLAYER)
-		self:DebugMsg(zo_strformat("Set to multi mount: <<1>>", GetCollectibleLink(self.CH.multiMount)))
-	end
-end
-
-
---[[------------------------------------------------------------------------------------------------
-function SSF:OnGroupMemberLeft()
-Inputs:				None
-Outputs:			None
-Description:	Updates the mount to the solo mount
-------------------------------------------------------------------------------------------------]]--
-function SSF:OnGroupMemberLeft(eventCode, memberCharacterName, reason, isLocalPlayer, isLeader, memberDisplayName, actionRequiredVote)
-	if isLocalPlayer and self.CH.multiMountEnable then
-		if self.CH.soloMount == 7 or self.CH.soloMount == 8 then
-			SetRandomMountType(self.CH.soloMount - 6, GAMEPLAY_ACTOR_CATEGORY_PLAYER)
-		else
-			UseCollectible(self.CH.soloMount, GAMEPLAY_ACTOR_CATEGORY_PLAYER)
-			self:DebugMsg(zo_strformat("Set to solo mount: <<1>>", GetCollectibleLink(self.CH.soloMount)))
-		end
-	end
-end
-
-
---[[------------------------------------------------------------------------------------------------
-function SSF:MountContextMenu()
-Inputs:			  None
-Outputs:			None
-Description:	Adds an entry to the Mount list context menu.
-------------------------------------------------------------------------------------------------]]--
-function SSF:MountContextMenu()
-	ZO_PostHook(ZO_CollectibleTile_Keyboard, 'AddMenuOptions', function(self_)
-		if self_.collectibleData:GetCategoryType() == COLLECTIBLE_CATEGORY_TYPE_MOUNT and self.CH.multiMountEnable then
-			AddCustomMenuItem("SSF Set Mount", function()
-				local id = self_.collectibleData:GetId()
-				local index = self:ReverseTableLookUp(id, self.SoloMount.Values)
-				if index then
-					self.CH.soloMount = id
-					return
-				end
-				index = self:ReverseTableLookUp(id, self.MultiMount.Values)
-				if index then
-					self.CH.multiMount = id
-					return
-				end
-			end)
-		end
-	end)
-
-	ZO_PostHook(ZO_CollectibleImitationTile_Keyboard, 'ShowMenu', function(self_)
-		--d(self_.imitationCollectibleData)
-		local data = self_.imitationCollectibleData
-		if data.randomMountType and self.CH.multiMountEnable then
-			ClearMenu()
-			local stringId = self_:GetPrimaryInteractionStringId()
-			if stringId and self_:IsUsable() then
-				AddMenuItem(GetString(stringId), function() self_:Use() end)
-			end
-			AddCustomMenuItem("SSF Set Mount", function()
-				self.CH.soloMount = data.randomMountType
-			end)
-			ShowMenu()
-		end
-	end)
-end
-
-
---[[------------------------------------------------------------------------------------------------
-function SSF:SettingsChanged()
-Inputs:				None
-Outputs:			None
-Description:	Fired when the player first loads in after a settings reset is forced
-------------------------------------------------------------------------------------------------]]--
-function SSF:SettingsChanged()
-	if self.SV.settingsChanged then 
-		self:Chat(zo_strformat("Static's Social Features updated to <<1>>. Settings have been reset.", self.addonVersion))
-		self.SV.settingsChanged = false
-	end
 end
 
 
@@ -816,7 +302,7 @@ Description:	Formats text to be sent to the chat box for the user. Bools will be
 ------------------------------------------------------------------------------------------------]]--
 function SSF:Chat(inputString, ...)
 	-- if chat isn't enabled then return
-	if not self.SV.chatMsgEnable then return end
+	if not self.SV.chatMsgEnabled then return end
 
 	local Args = {...}
 
@@ -871,7 +357,8 @@ Outputs:			None
 Description:	For internal add-on testing only.
 ------------------------------------------------------------------------------------------------]]--
 function SSF:Test(...)
-	self.Notifications:Notify(...)
+	--self.Notifications:Notify(...)
+	--self:Chat(...)
 end
 
 

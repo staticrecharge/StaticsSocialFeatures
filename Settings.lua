@@ -135,7 +135,7 @@ function Settings:CreateSettingsPanel()
 		name = "Fav Icon", -- or string id or function returning a string
 		choices = Parent.IconTextures,
 		getFunc = function() return Parent.SV.favIconTexture end,
-		setFunc = function(icon) Parent.SV.favIconTexture = icon Parent:UpdateFavIcon() end,
+		setFunc = function(icon) Parent.SV.favIconTexture = icon Parent.Lists:UpdateFavIcon() end,
 		maxColumns = 5, -- number of icons in one row (optional)
 		visibleRows = 3, -- number of visible rows (optional)
 		iconSize = 32, -- size of the icons (optional)
@@ -148,7 +148,7 @@ function Settings:CreateSettingsPanel()
 		type = "slider",
 		name = "Icon Size (%)",
 		getFunc = function() return Parent.SV.favIconSize end,
-		setFunc = function(value) Parent.SV.favIconSize = value Parent:UpdateFavIcon() end,
+		setFunc = function(value) Parent.SV.favIconSize = value Parent.Lists:UpdateFavIcon() end,
 		min = 50,
 		max = 150,
 		step = 5,
@@ -165,7 +165,7 @@ function Settings:CreateSettingsPanel()
 		type = "checkbox",
     name = "Inherit Text Color",
     getFunc = function() return Parent.SV.favIconInheritColor end,
-    setFunc = function(value) Parent.SV.favIconInheritColor = value Parent:UpdateFavIcon() end,
+    setFunc = function(value) Parent.SV.favIconInheritColor = value Parent.Lists:UpdateFavIcon() end,
     tooltip = "Makes the icon match the color of the text in the friends list.",
     width = "full",
 		default = Parent.Defaults.favIconInheritColor,
@@ -499,8 +499,8 @@ function Settings:CreateSettingsPanel()
 	optionsData[i] = {
 		type = "dropdown",
 		name = "Solo Mount", -- or string id or function returning a string
-		choices = Parent.SoloMount.Keys, --{"All", "Fav Only", "None"},
-		choicesValues = Parent.SoloMount.Values, -- if specified, these values will get passed to setFunc instead (optional)
+		choices = Parent.Mounts.SoloMount.Keys, --{"All", "Fav Only", "None"},
+		choicesValues = Parent.Mounts.SoloMount.Values, -- if specified, these values will get passed to setFunc instead (optional)
 		getFunc = function() return Parent.CH.soloMount end, -- if multiSelect is true the getFunc must return a table
 		setFunc = function(var) Parent.CH.soloMount = var end, -- if multiSelect is true the setFunc's var must be a table
 		tooltip = "Which solo mount to switch to.",
@@ -516,8 +516,8 @@ function Settings:CreateSettingsPanel()
 	optionsData[i] = {
 		type = "dropdown",
 		name = "Multi Mount", -- or string id or function returning a string
-		choices = Parent.MultiMount.Keys, --{"All", "Fav Only", "None"},
-		choicesValues = Parent.MultiMount.Values, -- if specified, these values will get passed to setFunc instead (optional)
+		choices = Parent.Mounts.MultiMount.Keys, --{"All", "Fav Only", "None"},
+		choicesValues = Parent.Mounts.MultiMount.Values, -- if specified, these values will get passed to setFunc instead (optional)
 		getFunc = function() return Parent.CH.multiMount end, -- if multiSelect is true the getFunc must return a table
 		setFunc = function(var) Parent.CH.multiMount = var end, -- if multiSelect is true the setFunc's var must be a table
 		tooltip = "Which multi mount to switch to.",
@@ -586,6 +586,21 @@ Description:	Updates the settings panel in LibAddonMenu.
 function Settings:Update()
 	local Parent = self:GetParent()
 	if not Parent.LAMReady then return end
+end
+
+
+--[[------------------------------------------------------------------------------------------------
+function Settings:SettingsChanged()
+Inputs:				None
+Outputs:			None
+Description:	Fired when the player first loads in after a settings reset is forced
+------------------------------------------------------------------------------------------------]]--
+function Settings:SettingsChanged()
+	local Parent = self:GetParent()
+	if Parent.SV.settingsChanged then 
+		Parent:Chat(zo_strformat("Static's Social Features updated to <<1>>. Settings have been reset.", Parent.addonVersion))
+		Parent.SV.settingsChanged = false
+	end
 end
 
 
