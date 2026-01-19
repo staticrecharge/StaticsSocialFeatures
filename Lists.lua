@@ -9,7 +9,7 @@ Description:    Controls the extended friends and ignored list features.
 Libraries and Aliases
 ------------------------------------------------------------------------------------------------]]--
 local EM = EVENT_MANAGER
-Local FLM = FRIENDS_LIST_MANAGER
+local FLM = FRIENDS_LIST_MANAGER
 local ILM = IGNORE_LIST_MANAGER
 
 

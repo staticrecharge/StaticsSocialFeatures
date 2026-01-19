@@ -1,11 +1,11 @@
-## Title: |cFF6600Static's Social Features|r 1.1.0
+## Title: |cFF6600Static's Social Features|r 1.2.0
 ## Author: |CFF0000Static_Recharge|r
-## Version: 1.1.0
+## Version: 1.2.0
 ## AddOnVersion: 1
 ## APIVersion: 101047
 ## DependsOn: LibAddonMenu-2.0>=38 LibCustomMenu>=730
-## SavedVariables: StaticsSocialFeaturesAccountWideVars
-## DisableSavedVariablesAutoSaving: 1
+## SavedVariables: StaticsSocialFeaturesAccountWideVars StaticsSocialFeaturesCharVars
+## DisableSavedVariablesAutoSaving: 0
 ## Description: Adds specific social features, fav friends, etc.
 ## IsLibrary: false
 
@@ -20,5 +20,6 @@ Notifications.lua
 Settings.lua
 Status.lua
 StaticsSocialFeatures.lua
+Bindings.xml
 
-# Special thanks to @blaize_0 and @Brasstortoise for helping me test this add-on!
+# Special thanks to @blaize_0, @Brasstortoise and @yeahnahno for helping me test this add-on!

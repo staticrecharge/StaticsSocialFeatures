@@ -475,6 +475,63 @@ function Settings:CreateSettingsPanel()
   i = i + 1
   optionsData[i] = {
 		type = "header",
+		name = "Mount Features",
+	}
+
+	i = i + 1
+  optionsData[i] = {
+		type = "description",
+    text = "These settings are character specific.",
+    width = "full",
+	}
+
+	i = i + 1
+	optionsData[i] = {
+		type = "checkbox",
+    name = "Auto Switch to Multi-Rider",
+    getFunc = function() return Parent.CH.multiMountEnable end,
+    setFunc = function(value) Parent.CH.multiMountEnable = value end,
+    width = "full",
+		default = Parent.CharDefaults.multiMountEnable,
+	}
+
+	i = i + 1
+	optionsData[i] = {
+		type = "dropdown",
+		name = "Solo Mount", -- or string id or function returning a string
+		choices = Parent.SoloMount.Keys, --{"All", "Fav Only", "None"},
+		choicesValues = Parent.SoloMount.Values, -- if specified, these values will get passed to setFunc instead (optional)
+		getFunc = function() return Parent.CH.soloMount end, -- if multiSelect is true the getFunc must return a table
+		setFunc = function(var) Parent.CH.soloMount = var end, -- if multiSelect is true the setFunc's var must be a table
+		tooltip = "Which solo mount to switch to.",
+		width = "full", -- or "half" (optional)
+		scrollable = true, -- boolean or number, if set the dropdown will feature a scroll bar if there are a large amount of choices and limit the visible lines to the specified number or 10 if true is used (optional)
+		default = Parent.CharDefaults.soloMount, -- default value or function that returns the default value (optional)
+		multiSelect = false, -- boolean or function returning a boolean. If set to true you can select multiple entries at the list (optional)
+		requiresReload = false, -- boolean, if set to true, the warning text will contain a notice that changes are only applied after an UI reload and any change to the value will make the "Apply Settings" button appear on the panel which will reload the UI when pressed (optional)
+		disabled = function() return not Parent.CH.multiMountEnable end,
+	}
+
+	i = i + 1
+	optionsData[i] = {
+		type = "dropdown",
+		name = "Multi Mount", -- or string id or function returning a string
+		choices = Parent.MultiMount.Keys, --{"All", "Fav Only", "None"},
+		choicesValues = Parent.MultiMount.Values, -- if specified, these values will get passed to setFunc instead (optional)
+		getFunc = function() return Parent.CH.multiMount end, -- if multiSelect is true the getFunc must return a table
+		setFunc = function(var) Parent.CH.multiMount = var end, -- if multiSelect is true the setFunc's var must be a table
+		tooltip = "Which multi mount to switch to.",
+		width = "full", -- or "half" (optional)
+		scrollable = true, -- boolean or number, if set the dropdown will feature a scroll bar if there are a large amount of choices and limit the visible lines to the specified number or 10 if true is used (optional)
+		default = Parent.CharDefaults.multiMount, -- default value or function that returns the default value (optional)
+		multiSelect = false, -- boolean or function returning a boolean. If set to true you can select multiple entries at the list (optional)
+		requiresReload = false, -- boolean, if set to true, the warning text will contain a notice that changes are only applied after an UI reload and any change to the value will make the "Apply Settings" button appear on the panel which will reload the UI when pressed (optional)
+		disabled = function() return not Parent.CH.multiMountEnable end,
+	}
+	
+	i = i + 1
+  optionsData[i] = {
+		type = "header",
 		name = "Misc.",
 	}
 

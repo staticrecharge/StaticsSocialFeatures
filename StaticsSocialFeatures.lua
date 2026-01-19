@@ -17,6 +17,7 @@ local FLM = FRIENDS_LIST_MANAGER
 local FL = FRIENDS_LIST
 local CR = CHAT_ROUTER
 local CSA = CENTER_SCREEN_ANNOUNCE
+local CDM = ZO_COLLECTIBLE_DATA_MANAGER
 
 
 --[[------------------------------------------------------------------------------------------------
@@ -36,7 +37,7 @@ Description:	Initializes all of the variables, object managers, slash commands a
 function SSF:Initialize()
 	-- Static definitions
 	self.addonName = "StaticsSocialFeatures"
-	self.addonVersion = "1.1.0"
+	self.addonVersion = "1.2.0"
 	self.varsVersion = 2 -- SHOULD BE 2
 	self.author = "|CFF0000Static_Recharge|r"
 	self.chatPrefix = "|cFF6600[SSF]:|r "
@@ -105,6 +106,8 @@ function SSF:Initialize()
 		"/esoui/art/buttons/featuredot_active.dds",					-- Feature Dot
 	}
 
+	self.multiRiderSubCatID = 75
+
 	self.Defaults = {
 		chatMsgEnabled = true,
 		debugMode = false,
@@ -142,12 +145,30 @@ function SSF:Initialize()
 		Friends = {},
 		Ignored = {},
 	}
+	self.CharDefaults = {
+		multiMountEnable = false,
+		multiMount = nil,
+		soloMount = nil,
+	}
 
 	-- Session variables
 	self.chatRouterEventRedirected = false
+	self.SoloMount = {
+		Keys = {},
+		Values = {},
+	}
+	self.MultiMount = {
+		Keys = {},
+		Values = {},
+	}
+	self.currentMount = nil
+	self:UpdateMountData()
+	
 
 	-- Saved variables initialization
 	self.SV = ZO_SavedVars:NewAccountWide("StaticsSocialFeaturesAccountWideVars", self.varsVersion, nil, self.Defaults, nil)
+	self.CH = ZO_SavedVars:NewCharacterIdSettings("StaticsSocialFeaturesCharVars", self.varsVersion, nil, self.CharDefaults, nil)
+	--RequestAddOnSavedVariablesPrioritySave(self.addonName)
 
 	-- Update Character list (preserve any settings)
 	local NewData = {}
@@ -194,15 +215,19 @@ function SSF:Initialize()
 
 	-- Register Context Menu
 	self:FriendListContextMenu()
+	self:MountContextMenu()
 
 	-- Event Registrations
 	EM:RegisterForEvent(self.addonName, EVENT_PLAYER_ACTIVATED, function(...) self:OnPlayerActivated(...) end)
 	EM:RegisterForEvent(self.addonName, EVENT_CHAT_MESSAGE_CHANNEL, function(...) self:OnEventChatMessageChannel(...) end)
+	EM:RegisterForEvent(self.addonName, EVENT_GROUP_MEMBER_JOINED, function(...) self:OnGroupMemberJoined(...) end)
+	EM:RegisterForEvent(self.addonName, EVENT_GROUP_MEMBER_LEFT, function(...) self:OnGroupMemberLeft(...) end)
 
 	-- Slash commands declarations
 	--SLASH_COMMANDS["/ssftest"] = function(...) self:Test(...) end
 
 	-- Keybindings associations
+	ZO_CreateStringId("SI_BINDING_NAME_MOUNT_PLAYER", "Mount Group Member")
 
 	self.initialized = true
 end
@@ -605,6 +630,153 @@ end
 
 
 --[[------------------------------------------------------------------------------------------------
+function SSF:MountPlayer()
+Inputs:				None
+Outputs:			None
+Description:	Mounts the targetted player
+------------------------------------------------------------------------------------------------]]--
+function SSF:MountPlayer()
+	UseMountAsPassenger(GetRawUnitName("reticleoverplayer"))
+end
+
+
+--[[------------------------------------------------------------------------------------------------
+function SSF:UpdateMountData()
+Inputs:				None
+Outputs:			None
+Description:	Updates the mount lists
+------------------------------------------------------------------------------------------------]]--
+function SSF:UpdateMountData()
+	local function IsNotMountCategory(categoryData)
+		return not categoryData:IsOutfitStylesCategory() and not categoryData:IsHousingCategory()
+	end
+
+	local function IsMount(collectibleData)
+		return collectibleData:IsCategoryType(COLLECTIBLE_CATEGORY_TYPE_MOUNT)
+	end
+
+	local SoloMountCollectionData = {}
+	local MultiMountCollectionData = {}
+
+	--Iterate over the main categories and do not use outfits or houses
+	for idx, categoryData in CDM:CategoryIterator({IsNotMountCategory}) do
+		--Iterate over the sub-categories of the current main category and do not use outfits or houses
+		for _, subCategoryData in categoryData:SubcategoryIterator({IsNotMountCategory}) do
+			--Iterate over the sub-categorie's collectibles and only check for mounts collectible type
+			for _, subCatCollectibleData in subCategoryData:CollectibleIterator({IsMount}) do
+				--Check if the mount is owned/unlocked and not blocked
+				if subCatCollectibleData:IsUnlocked() and not subCatCollectibleData:IsBlocked() then
+					local id = subCatCollectibleData:GetId()
+					local isActive = subCatCollectibleData:IsActive(GAMEPLAY_ACTOR_CATEGORY_PLAYER)
+					local name = subCatCollectibleData:GetFormattedName()
+					if isActive then
+						self.currentMount = {
+							id = id,
+							name = name,
+						}
+					end
+					if subCategoryData:GetId() == self.multiRiderSubCatID then
+						table.insert(MultiMountCollectionData, {id = id, name = name})
+					else
+						table.insert(SoloMountCollectionData, {id = id, name = name})
+					end
+				end
+			end
+		end
+	end
+
+	table.sort(MultiMountCollectionData, function(a, b) return a.name < b.name end)
+	table.sort(SoloMountCollectionData, function(a, b) return a.name < b.name end)
+	table.insert(SoloMountCollectionData, 1, {id = 7, name = "-- Random Favorite Mount"}) --offset id by 6, first collectible that's not a mount
+	table.insert(SoloMountCollectionData, 2, {id = 8, name = "-- Random Mount"})
+
+	for index, value in ipairs(MultiMountCollectionData) do
+		self.MultiMount.Values[index] = value.id
+		self.MultiMount.Keys[index] = value.name
+	end
+	for index, value in ipairs(SoloMountCollectionData) do
+		self.SoloMount.Values[index] = value.id
+		self.SoloMount.Keys[index] = value.name
+	end
+end
+
+
+--[[------------------------------------------------------------------------------------------------
+function SSF:OnGroupMemberJoined()
+Inputs:				None
+Outputs:			None
+Description:	Updates the mount to the multi mount
+------------------------------------------------------------------------------------------------]]--
+function SSF:OnGroupMemberJoined(eventCode, memberCharacterName, memberDisplayName, isLocalPlayer)
+	if isLocalPlayer and self.CH.multiMountEnable then
+		UseCollectible(self.CH.multiMount, GAMEPLAY_ACTOR_CATEGORY_PLAYER)
+		self:DebugMsg(zo_strformat("Set to multi mount: <<1>>", GetCollectibleLink(self.CH.multiMount)))
+	end
+end
+
+
+--[[------------------------------------------------------------------------------------------------
+function SSF:OnGroupMemberLeft()
+Inputs:				None
+Outputs:			None
+Description:	Updates the mount to the solo mount
+------------------------------------------------------------------------------------------------]]--
+function SSF:OnGroupMemberLeft(eventCode, memberCharacterName, reason, isLocalPlayer, isLeader, memberDisplayName, actionRequiredVote)
+	if isLocalPlayer and self.CH.multiMountEnable then
+		if self.CH.soloMount == 7 or self.CH.soloMount == 8 then
+			SetRandomMountType(self.CH.soloMount - 6, GAMEPLAY_ACTOR_CATEGORY_PLAYER)
+		else
+			UseCollectible(self.CH.soloMount, GAMEPLAY_ACTOR_CATEGORY_PLAYER)
+			self:DebugMsg(zo_strformat("Set to solo mount: <<1>>", GetCollectibleLink(self.CH.soloMount)))
+		end
+	end
+end
+
+
+--[[------------------------------------------------------------------------------------------------
+function SSF:MountContextMenu()
+Inputs:			  None
+Outputs:			None
+Description:	Adds an entry to the Mount list context menu.
+------------------------------------------------------------------------------------------------]]--
+function SSF:MountContextMenu()
+	ZO_PostHook(ZO_CollectibleTile_Keyboard, 'AddMenuOptions', function(self_)
+		if self_.collectibleData:GetCategoryType() == COLLECTIBLE_CATEGORY_TYPE_MOUNT and self.CH.multiMountEnable then
+			AddCustomMenuItem("SSF Set Mount", function()
+				local id = self_.collectibleData:GetId()
+				local index = self:ReverseTableLookUp(id, self.SoloMount.Values)
+				if index then
+					self.CH.soloMount = id
+					return
+				end
+				index = self:ReverseTableLookUp(id, self.MultiMount.Values)
+				if index then
+					self.CH.multiMount = id
+					return
+				end
+			end)
+		end
+	end)
+
+	ZO_PostHook(ZO_CollectibleImitationTile_Keyboard, 'ShowMenu', function(self_)
+		--d(self_.imitationCollectibleData)
+		local data = self_.imitationCollectibleData
+		if data.randomMountType and self.CH.multiMountEnable then
+			ClearMenu()
+			local stringId = self_:GetPrimaryInteractionStringId()
+			if stringId and self_:IsUsable() then
+				AddMenuItem(GetString(stringId), function() self_:Use() end)
+			end
+			AddCustomMenuItem("SSF Set Mount", function()
+				self.CH.soloMount = data.randomMountType
+			end)
+			ShowMenu()
+		end
+	end)
+end
+
+
+--[[------------------------------------------------------------------------------------------------
 function SSF:SettingsChanged()
 Inputs:				None
 Outputs:			None
@@ -619,6 +791,21 @@ end
 
 
 --[[------------------------------------------------------------------------------------------------
+function SSF:ReverseTableLookUp(search, list)
+Inputs:				search, list
+Outputs:			index
+Description:	returns index of found item in list
+------------------------------------------------------------------------------------------------]]--
+function SSF:ReverseTableLookUp(search, list)
+	for index, value in ipairs(list) do
+		if value == search then
+			return index
+		end
+	end
+end
+
+
+--[[------------------------------------------------------------------------------------------------
 function SSF:Chat(inputString, ...)
 Inputs:				inputString			- The input string to be formatted and sent to chat. Can be bools.
 							...							- More inputs to be placed on new lines within the same message.
@@ -628,8 +815,8 @@ Description:	Formats text to be sent to the chat box for the user. Bools will be
 							line within the message. Only the first line gets the add-on prefix.
 ------------------------------------------------------------------------------------------------]]--
 function SSF:Chat(inputString, ...)
-	-- if chat isn't enabled or the string is empty or nil then return
-	if not self.SV.chatMsgEnable or inputString == false or inputString == "" then return end
+	-- if chat isn't enabled then return
+	if not self.SV.chatMsgEnable then return end
 
 	local Args = {...}
 
@@ -648,31 +835,17 @@ end
 --[[------------------------------------------------------------------------------------------------
 function function SSF:BoolConvert(bool, returnType)
 Inputs:				bool 						- input bool to convert
-							returnType 			- how the output should be formated (optional, 1 default)
 Outputs:			string 					- string containing the converted bool, or the input if not a bool
 Description:	Returns a converted bool or the input if not a bool.
-returnType: 	1 	- "true/false"
-							2		- "on/off"
-							3		- "yes/no"
-							4		- "positive/negative"
 ------------------------------------------------------------------------------------------------]]--
-function SSF:BoolConvert(bool, returnType)
-	if type(bool) ~= "boolean" then return end
-
-	local Responses = {
-		{"true", "false"},
-		{"on", "off"},
-		{"yes", "no"},
-		{"positive", "negative"},
-	}
-
-  if not returnType then returnType = LIBSTATIC_BOOLTYPE_TF end
-  if bool then
-    return Responses[returnType][1]
-  else
-    return Responses[returnType][2]
-  end
-
+function SSF:BoolConvert(bool)
+	if type(bool) ~= "boolean" then
+		if bool then
+			return "true"
+		else
+			return "false"
+		end
+	end
 	return bool
 end
 

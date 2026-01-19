@@ -6,7 +6,7 @@
     {
       "label": "copy",
       "type": "shell",
-      "command": "robocopy 'E:\\Documents\\Add-on Dev\\StaticsSocialFeatures' 'E:\\Documents\\Elder Scrolls Online\\live\\AddOns\\StaticsSocialFeatures' Lists.lua Status.lua Notifications.lua StaticsSocialFeatures.addon StaticsSocialFeatures.lua Settings.lua changelog.readme",
+      "command": "robocopy 'E:\\Documents\\Add-on Dev\\StaticsSocialFeatures' 'E:\\Documents\\Elder Scrolls Online\\live\\AddOns\\StaticsSocialFeatures' Lists.lua Status.lua Notifications.lua StaticsSocialFeatures.addon StaticsSocialFeatures.lua Settings.lua changelog.readme Bindings.xml",
       "problemMatcher": [],
       "group": {
         "kind": "build",

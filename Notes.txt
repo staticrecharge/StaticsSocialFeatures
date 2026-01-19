@@ -1,0 +1,21 @@
+/script UseMountAsPassenger(GetUnitDisplayName("reticleover"))
+
+/script d(StaticsSocialFeatures.MountData)
+
+/script d(StaticsSocialFeatures.currentMount)
+
+
+EVENT_GROUP_MEMBER_JOINED (number eventCode, string memberCharacterName, string memberDisplayName, boolean isLocalPlayer)
+EVENT_GROUP_MEMBER_LEFT (number eventCode, string memberCharacterName, GroupLeaveReason reason, boolean isLocalPlayer, boolean isLeader, string memberDisplayName, boolean actionRequiredVote)
+
+
+UseCollectible(integer collectibleId, GameplayActorCategory actorCategory) GAMEPLAY_ACTOR_CATEGORY_PLAYER
+
+
+EVENT_ACTIVE_MOUNT_CHANGED (number eventCode)
+
+
+/script d(GetCursorCollectibleId())
+
+
+/script d(ZO_CollectionsBook.categoryTree:GetSelectedData())
