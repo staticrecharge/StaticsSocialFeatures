@@ -11,6 +11,7 @@ Libraries and Aliases
 local LAM2 = LibAddonMenu2
 local CM = CALLBACK_MANAGER
 local FL = FRIENDS_LIST
+local WM = WINDOW_MANAGER
 
 
 --[[------------------------------------------------------------------------------------------------
@@ -510,6 +511,7 @@ function Settings:CreateSettingsPanel()
 		multiSelect = false, -- boolean or function returning a boolean. If set to true you can select multiple entries at the list (optional)
 		requiresReload = false, -- boolean, if set to true, the warning text will contain a notice that changes are only applied after an UI reload and any change to the value will make the "Apply Settings" button appear on the panel which will reload the UI when pressed (optional)
 		disabled = function() return not Parent.CH.multiMountEnable end,
+		reference = "SSF_SoloMountDropdown_LAM",
 	}
 
 	i = i + 1
@@ -527,6 +529,7 @@ function Settings:CreateSettingsPanel()
 		multiSelect = false, -- boolean or function returning a boolean. If set to true you can select multiple entries at the list (optional)
 		requiresReload = false, -- boolean, if set to true, the warning text will contain a notice that changes are only applied after an UI reload and any change to the value will make the "Apply Settings" button appear on the panel which will reload the UI when pressed (optional)
 		disabled = function() return not Parent.CH.multiMountEnable end,
+		reference = "SSF_MultiMountDropdown_LAM",
 	}
 	
 	i = i + 1
@@ -560,13 +563,16 @@ function Settings:CreateSettingsPanel()
 
 	local function LAMPanelCreated(panel)
 		if panel ~= Parent.LAMSettingsPanel then return end
+		Parent.Controls = {
+			SoloMDD = WM:GetControlByName("SSF_SoloMountDropdown_LAM"),
+			MultiMDD = WM:GetControlByName("SSF_MultiMountDropdown_LAM"),
+		}
 		Parent.LAMReady = true
-		Parent.Controls = {}
-		self:Update()
 	end
 
 	local function LAMPanelOpened(panel)
 		if panel ~= Parent.LAMSettingsPanel then return end
+		if not Parent.LAMReady then return end
 		self:Update()
 	end
 
@@ -586,6 +592,15 @@ Description:	Updates the settings panel in LibAddonMenu.
 function Settings:Update()
 	local Parent = self:GetParent()
 	if not Parent.LAMReady then return end
+
+	local M = Parent.Mounts
+	M:UpdateMountData()
+
+	local C = Parent.Controls
+	C.SoloMDD:UpdateChoices(M.SoloMount.Keys, M.SoloMount.Values)
+	C.SoloMDD:UpdateValue()
+	C.MultiMDD:UpdateChoices(M.MultiMount.Keys, M.MultiMount.Values)
+	C.MultiMDD:UpdateValue()
 end
 
 

@@ -1,3 +1,6 @@
+1.2.1
+  - bug fix for constant offline reminders
+
 1.2.0
   - Added hotkey to mount multi-rider group member mounts
   - Added the ability to select a multi mount and solo mount and swap automatically when grouping

@@ -170,7 +170,7 @@ function Status:OnPlayerActivated(eventCode, initial)
 			Parent.Notifications:Notify("You are set to offline.")
 		end
 	end
-	EM:UnregisterForEvent(Parent.addonName, EVENT_PLAYER_ACTIVATED)
+	EM:UnregisterForEvent(self.eventSpace, EVENT_PLAYER_ACTIVATED)
 end
 
 

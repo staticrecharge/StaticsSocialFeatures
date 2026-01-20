@@ -1,7 +1,7 @@
 --[[------------------------------------------------------------------------------------------------
 Title:					Static's Social Features
 Author:					Static_Recharge
-Version:				1.1.0
+Version:				1.2.1
 Description:		Adds specific social featues.
 ------------------------------------------------------------------------------------------------]]--
 
@@ -31,7 +31,7 @@ Description:	Initializes all of the variables, object managers, slash commands a
 function SSF:Initialize()
 	-- Static definitions
 	self.addonName = "StaticsSocialFeatures"
-	self.addonVersion = "1.2.0"
+	self.addonVersion = "1.2.1"
 	self.varsVersion = 2 -- SHOULD BE 2
 	self.charVarsVersion = 1
 	self.author = "|CFF0000Static_Recharge|r"
