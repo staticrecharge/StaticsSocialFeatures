@@ -13,8 +13,17 @@ local EM = EVENT_MANAGER
 
 --[[------------------------------------------------------------------------------------------------
 Status Class Initialization
-Status    - Object containing all functions, tables, variables,and constants.
-  |-  Parent    - Reference to parent object.
+Status    													              - Parent object containing all functions, tables, variables, constants and other data managers.
+├─ :IsInitialized()                               - Returns true if the object has been successfully initialized.
+├─ :PlayerIdle()															    - Checks if the player is idle and updates the timer accordingly.
+├─ :StartAFKTimerAgain()                					- Used to re-enable the afk timer from external code
+├─ :OfflineTimerUpdate()               						- Checks if the offline timer end has been reached if enabled.
+├─ :OnPlayerActivated(eventCode, initial)					- Fired when the player character is available after loading screens such as changing 
+│                                                   zones, reloadui and logging in. Sets the desired player Status for the logged in
+│                                                   character, if not disabled.
+├─ :OnEventChatMessageChannel(eventCode, channelType, fromName, text, isCustomerService, fromDisplayName)
+│                                     						- Fired when there is a chat message. Checking for outgoing whispers and notifying if needed.
+└─ :GetParent()                                   - Returns the parent object of this object for reference to parent variables.
 ------------------------------------------------------------------------------------------------]]--
 local Status = ZO_InitializingObject:Subclass()
 
@@ -53,6 +62,19 @@ function Status:Initialize(Parent)
 
   EM:RegisterForEvent(self.eventSpace, EVENT_PLAYER_ACTIVATED, function(...) self:OnPlayerActivated(...) end)
   EM:RegisterForEvent(self.eventSpace, EVENT_CHAT_MESSAGE_CHANNEL, function(...) self:OnEventChatMessageChannel(...) end)
+
+  self.initialized = true
+end
+
+
+--[[------------------------------------------------------------------------------------------------
+Status:IsInitialized()
+Inputs:				None
+Outputs:			initialized                         - bool for object initialized state
+Description:	Returns true if the object has been successfully initialized.
+------------------------------------------------------------------------------------------------]]--
+function Status:IsInitialized()
+  return self.initialized
 end
 
 
@@ -146,25 +168,25 @@ Inputs:				eventCode				- Internal ZOS event code, not used here.
 							initial					- Indicates if this is the first activation from log-in.
 Outputs:			None
 Description:	Fired when the player character is available after loading screens such as changing 
-							zones, reloadui and logging in. Sets the desired player status for the logged in
+							zones, reloadui and logging in. Sets the desired player Status for the logged in
 							character, if not disabled.
 ------------------------------------------------------------------------------------------------]]--
 function Status:OnPlayerActivated(eventCode, initial)
   local Parent = self:GetParent()
-	Parent:DebugMsg("OnPlayerActivated event fired.")
-	Parent:DebugMsg(zo_strformat("Player status is <<1>>", GetPlayerStatus()))
+	Parent.Chat:Debug("OnPlayerActivated event fired.")
+	Parent.Chat:Debug(zo_strformat("Player Status is <<1>>", GetPlayerStatus()))
 	if initial then
 		Parent.Settings:SettingsChanged()
-		if Parent.initialized then Parent:DebugMsg("Initialized.") end
+		if Parent.initialized then Parent.Chat:Debug("Initialized.") end
 		local i = Parent:GetCharacterIndex()
-		Parent:DebugMsg(zo_strformat("Character \"<<1>>\" (<<2>>) loaded.", Parent.SV.Characters[i].name, Parent.SV.Characters[i].id))
+		Parent.Chat:Debug(zo_strformat("Character \"<<1>>\" (<<2>>) loaded.", Parent.SV.Characters[i].name, Parent.SV.Characters[i].id))
 		if Parent.SV.accountOverrideEnabled and Parent.SV.accountOverrideLogin then
 			SelectPlayerStatus(Parent.SV.accountOverride)
-			Parent:DebugMsg(zo_strformat("Player status set to <<1>>", Parent.SV.accountOverride))
+			Parent.Chat:Debug(zo_strformat("Player Status set to <<1>>", Parent.SV.accountOverride))
 		elseif
 			Parent.SV.Characters[i].charOverride ~= Parent.PlayerStatus.Disabled and Parent.SV.Characters[i].charOverrideLogin then
 			SelectPlayerStatus(Parent.SV.Characters[i].charOverride)
-			Parent:DebugMsg(zo_strformat("Player status set to <<1>>", Parent.SV.Characters[i].charOverride))
+			Parent.Chat:Debug(zo_strformat("Player Status set to <<1>>", Parent.SV.Characters[i].charOverride))
 		end
 		if Parent.SV.offlineNotice and GetPlayerStatus() == Parent.PlayerStatus.Offline then
 			Parent.Notifications:Notify("You are set to offline.")
@@ -189,7 +211,7 @@ Description:	Fired when there is a chat message. Checking for outgoing whispers 
 function Status:OnEventChatMessageChannel(eventCode, channelType, fromName, text, isCustomerService, fromDisplayName)
   local Parent = self:GetParent()
 	if channelType ~= CHAT_CHANNEL_WHISPER_SENT then return end
-	Parent:DebugMsg("OnEventChatMessageChannel event fired.")
+	Parent.Chat:Debug("OnEventChatMessageChannel event fired.")
 	if GetPlayerStatus() == Parent.PlayerStatus.Offline and Parent.SV.whisperNotice then
 		Parent.Notifications:Notify("You are set to offline and cannot receive replies to whispers.")
 	end
@@ -208,11 +230,6 @@ end
 
 
 --[[------------------------------------------------------------------------------------------------
-StaticsRecruiterInitStatus(Parent)
-Inputs:				Parent          - The parent object of the object to be created.
-Outputs:			Status             - The new object created.
-Description:	Global function to create a new instance of this object.
+Global template assignment
 ------------------------------------------------------------------------------------------------]]--
-function StaticsSocialFeaturesInitStatus(Parent)
-	return Status:New(Parent)
-end
+StaticsSocialFeatures.Status = Status

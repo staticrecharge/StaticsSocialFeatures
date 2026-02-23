@@ -12,12 +12,17 @@ local LAM2 = LibAddonMenu2
 local CM = CALLBACK_MANAGER
 local FL = FRIENDS_LIST
 local WM = WINDOW_MANAGER
+local EM = EVENT_MANAGER
 
 
 --[[------------------------------------------------------------------------------------------------
 Settings Class Initialization
-Settings    - Object containing all functions, tables, variables,and constants.
-  |-  Parent    - Reference to parent object.
+Settings    													            - Parent object containing all functions, tables, variables, constants and other data managers.
+├─ :IsInitialized()                               - Returns true if the object has been successfully initialized.
+├─ :CreateSettingsPanel()													- Creates and registers the settings panel with LibAddonMenu.
+├─ :Update()                											- Updates the settings panel in LibAddonMenu.
+├─ :SettingsChanged()               							- Fired when the player first loads in after a settings reset is forced.
+└─ :GetParent()                                   - Returns the parent object of this object for reference to parent variables.
 ------------------------------------------------------------------------------------------------]]--
 local Settings = ZO_InitializingObject:Subclass()
 
@@ -30,7 +35,25 @@ Description:	Initializes all of the variables and tables.
 ------------------------------------------------------------------------------------------------]]--
 function Settings:Initialize(Parent)
   self.Parent = Parent
+	self.eventSpace = "SSFSettings"
+
   self:CreateSettingsPanel()
+
+	-- Event Registrations
+	EM:RegisterForEvent(self.eventSpace, EVENT_PLAYER_ACTIVATED, function(...) self:SettingsChanged() end)
+
+	self.initialized = true
+end
+
+
+--[[------------------------------------------------------------------------------------------------
+Settings:IsInitialized()
+Inputs:				None
+Outputs:			initialized                         - bool for object initialized state
+Description:	Returns true if the object has been successfully initialized.
+------------------------------------------------------------------------------------------------]]--
+function Settings:IsInitialized()
+  return self.initialized
 end
 
 
@@ -47,7 +70,7 @@ function Settings:CreateSettingsPanel()
 		name = "Static's Social Features",
 		displayName = "|cFF6600Static's Social Features|r",
 		author = Parent.author,
-		--website = "https://www.esoui.com/downloads/info3836-StaticsRecruiter.html",
+		website = "https://www.esoui.com/downloads/info4239-StaticsSocialFeatures.html",
 		feedback = "https://www.esoui.com/portal.php?&uid=6533",
 		slashCommand = "/ssfmenu",
 		registerForRefresh = true,
@@ -93,8 +116,8 @@ function Settings:CreateSettingsPanel()
 	optionsData[i] = {
 		type = "dropdown",
 		name = "Shared Guild Info", -- or string id or function returning a string
-		choices = Parent.AllFavNone.Keys,
-		choicesValues = Parent.AllFavNone.Values, -- if specified, these values will get passed to setFunc instead (optional)
+		choices = Parent.AllFavNone:GetChoices(),
+		choicesValues = Parent.AllFavNone:GetValues(), -- if specified, these values will get passed to setFunc instead (optional)
 		getFunc = function() return Parent.SV.sharedGuilds end, -- if multiSelect is true the getFunc must return a table
 		setFunc = function(var) Parent.SV.sharedGuilds = var end, -- if multiSelect is true the setFunc's var must be a table
 		tooltip = "Displays which guilds you share with the highlighted friend.",
@@ -119,8 +142,8 @@ function Settings:CreateSettingsPanel()
 	optionsData[i] = {
 		type = "dropdown",
 		name = "Offline Group Invite", -- or string id or function returning a string
-		choices = Parent.AllFavNone.Keys,
-		choicesValues = Parent.AllFavNone.Values, -- if specified, these values will get passed to setFunc instead (optional)
+		choices = Parent.AllFavNone:GetChoices(),
+		choicesValues = Parent.AllFavNone:GetValues(), -- if specified, these values will get passed to setFunc instead (optional)
 		getFunc = function() return Parent.SV.groupInvite end, -- if multiSelect is true the getFunc must return a table
 		setFunc = function(var) Parent.SV.groupInvite = var end, -- if multiSelect is true the setFunc's var must be a table
 		tooltip = "Allows you to attempt to send group invite requests to friends showing as offline.",
@@ -252,8 +275,8 @@ function Settings:CreateSettingsPanel()
 	optionsData[i] = {
 		type = "dropdown",
 		name = "Account Wide Status", -- or string id or function returning a string
-		choices = Parent.PlayerStatus.Keys,
-		choicesValues = Parent.PlayerStatus.Values, -- if specified, these values will get passed to setFunc instead (optional)
+		choices = Parent.PlayerStatus:GetChoices(),
+		choicesValues = Parent.PlayerStatus:GetValues(), -- if specified, these values will get passed to setFunc instead (optional)
 		getFunc = function() return Parent.SV.accountOverride end, -- if multiSelect is true the getFunc must return a table
 		setFunc = function(var) Parent.SV.accountOverride = var end, -- if multiSelect is true the setFunc's var must be a table
 		width = "full", -- or "half" (optional)
@@ -300,8 +323,8 @@ function Settings:CreateSettingsPanel()
 		subcontrols[j] = {
 			type = "dropdown",
 			name = "Status", -- or string id or function returning a string
-			choices = Parent.PlayerStatus.Keys,
-			choicesValues = Parent.PlayerStatus.Values, -- if specified, these values will get passed to setFunc instead (optional)
+			choices = Parent.PlayerStatus:GetChoices(),
+			choicesValues = Parent.PlayerStatus:GetValues(), -- if specified, these values will get passed to setFunc instead (optional)
 			getFunc = function() return char.charOverride end, -- if multiSelect is true the getFunc must return a table
 			setFunc = function(var) char.charOverride = var end, -- if multiSelect is true the setFunc's var must be a table
 			width = "full", -- or "half" (optional)
@@ -360,8 +383,8 @@ function Settings:CreateSettingsPanel()
 	optionsData[i] = {
 		type = "dropdown",
 		name = "Notification Type", -- or string id or function returning a string
-		choices = Parent.NotificationTypes.Keys,
-		choicesValues = Parent.NotificationTypes.Values, -- if specified, these values will get passed to setFunc instead (optional)
+		choices = Parent.NotificationTypes:GetChoices(),
+		choicesValues = Parent.NotificationTypes:GetValues(), -- if specified, these values will get passed to setFunc instead (optional)
 		getFunc = function() return Parent.SV.notificationType end, -- if multiSelect is true the getFunc must return a table
 		setFunc = function(var) Parent.SV.notificationType = var end, -- if multiSelect is true the setFunc's var must be a table
 		tooltip = "Choose where to redirect the notifications from this add-on. If directed to chat, chat messages must be enabled in Misc.",
@@ -375,8 +398,8 @@ function Settings:CreateSettingsPanel()
 	optionsData[i] = {
 		type = "dropdown",
 		name = "Notification Size", -- or string id or function returning a string
-		choices = Parent.NotificationSizes.Keys,
-		choicesValues = Parent.NotificationSizes.Values, -- if specified, these values will get passed to setFunc instead (optional)
+		choices = Parent.NotificationSizes:GetChoices(),
+		choicesValues = Parent.NotificationSizes:GetValues(), -- if specified, these values will get passed to setFunc instead (optional)
 		getFunc = function() return Parent.SV.notificationSize end, -- if multiSelect is true the getFunc must return a table
 		setFunc = function(var) Parent.SV.notificationSize = var end, -- if multiSelect is true the setFunc's var must be a table
 		tooltip = "Size of center screen notifications.",
@@ -391,8 +414,8 @@ function Settings:CreateSettingsPanel()
 	optionsData[i] = {
 		type = "dropdown",
 		name = "Notification Sound", -- or string id or function returning a string
-		choices = Parent.NotificationSounds.Keys,
-		choicesValues = Parent.NotificationSounds.Values, -- if specified, these values will get passed to setFunc instead (optional)
+		choices = Parent.NotificationSounds:GetChoices(),
+		choicesValues = Parent.NotificationSounds:GetValues(), -- if specified, these values will get passed to setFunc instead (optional)
 		getFunc = function() return Parent.SV.notificationSound end, -- if multiSelect is true the getFunc must return a table
 		setFunc = function(var) Parent.SV.notificationSound = var PlaySound(Parent.SV.notificationSound) end, -- if multiSelect is true the setFunc's var must be a table
 		width = "full", -- or "half" (optional)
@@ -447,10 +470,21 @@ function Settings:CreateSettingsPanel()
 
 	i = i + 1
 	optionsData[i] = {
+		type = "checkbox",
+    name = "Multi-Rider as Passenger Notice",
+    getFunc = function() return Parent.SV.multiMountNotify end,
+    setFunc = function(value) Parent.SV.multiMountNotify = value end,
+		tooltip = "Shows a notification with the name of the person you mounted.",
+    width = "full",
+		default = Parent.Defaults.multiMountNotify,
+	}
+
+	i = i + 1
+	optionsData[i] = {
 		type = "dropdown",
 		name = "Friend Status Messages", -- or string id or function returning a string
-		choices = Parent.AllFavNone.Keys, --{"All", "Fav Only", "None"},
-		choicesValues = Parent.AllFavNone.Values, -- if specified, these values will get passed to setFunc instead (optional)
+		choices = Parent.AllFavNone:GetChoices(), --{"All", "Fav Only", "None"},
+		choicesValues = Parent.AllFavNone:GetValues(), -- if specified, these values will get passed to setFunc instead (optional)
 		getFunc = function() return Parent.SV.friendMsg end, -- if multiSelect is true the getFunc must return a table
 		setFunc = function(var) Parent.SV.friendMsg = var end, -- if multiSelect is true the setFunc's var must be a table
 		tooltip = "Control which friend status messages are displayed.",
@@ -500,8 +534,8 @@ function Settings:CreateSettingsPanel()
 	optionsData[i] = {
 		type = "dropdown",
 		name = "Solo Mount", -- or string id or function returning a string
-		choices = Parent.Mounts.SoloMount.Keys, --{"All", "Fav Only", "None"},
-		choicesValues = Parent.Mounts.SoloMount.Values, -- if specified, these values will get passed to setFunc instead (optional)
+		choices = Parent.Mounts.SoloMount:GetChoices(), --{"All", "Fav Only", "None"},
+		choicesValues = Parent.Mounts.SoloMount:GetValues(), -- if specified, these values will get passed to setFunc instead (optional)
 		getFunc = function() return Parent.CH.soloMount end, -- if multiSelect is true the getFunc must return a table
 		setFunc = function(var) Parent.CH.soloMount = var end, -- if multiSelect is true the setFunc's var must be a table
 		tooltip = "Which solo mount to switch to.",
@@ -518,8 +552,8 @@ function Settings:CreateSettingsPanel()
 	optionsData[i] = {
 		type = "dropdown",
 		name = "Multi Mount", -- or string id or function returning a string
-		choices = Parent.Mounts.MultiMount.Keys, --{"All", "Fav Only", "None"},
-		choicesValues = Parent.Mounts.MultiMount.Values, -- if specified, these values will get passed to setFunc instead (optional)
+		choices = Parent.Mounts.MultiMount:GetChoices(), --{"All", "Fav Only", "None"},
+		choicesValues = Parent.Mounts.MultiMount:GetValues(), -- if specified, these values will get passed to setFunc instead (optional)
 		getFunc = function() return Parent.CH.multiMount end, -- if multiSelect is true the getFunc must return a table
 		setFunc = function(var) Parent.CH.multiMount = var end, -- if multiSelect is true the setFunc's var must be a table
 		tooltip = "Which multi mount to switch to.",
@@ -542,23 +576,23 @@ function Settings:CreateSettingsPanel()
 	optionsData[i] = {
 		type = "checkbox",
     name = "Chat Messages",
-    getFunc = function() return Parent.SV.chatMsgEnabled end,
-    setFunc = function(value) Parent.SV.chatMsgEnabled = value end,
+    getFunc = function() return Parent.SV.chatEnabled end,
+    setFunc = function(value) Parent.SV.chatEnabled = value Parent.Chat:SetChatEnabled(value) end,
     tooltip = "Disables ALL chat messages from this add-on.",
     width = "half",
-		default = Parent.Defaults.chatMsgEnabled,
+		default = Parent.Defaults.chatEnabled,
 	}
 
 	i = i + 1
 	optionsData[i] = {
 		type = "checkbox",
     name = "Debugging Mode",
-    getFunc = function() return Parent.SV.debugMode end,
-    setFunc = function(value) Parent.SV.debugMode = value end,
+    getFunc = function() return Parent.SV.debugEnabled end,
+    setFunc = function(value) Parent.SV.debugEnabled = value Parent.Chat:SetDebugEnabled(value) end,
     tooltip = "Turns on extra messages for the purposes of debugging. Not intended for normal use. Must have chat messages enabled.",
     width = "half",
-		default = Parent.Defaults.debugMode,
-		disabled = not Parent.SV.chatMsgEnabled,
+		default = Parent.Defaults.debugEnabled,
+		disabled = not Parent.SV.debugEnabled,
 	}
 
 	local function LAMPanelCreated(panel)
@@ -597,9 +631,9 @@ function Settings:Update()
 	M:UpdateMountData()
 
 	local C = Parent.Controls
-	C.SoloMDD:UpdateChoices(M.SoloMount.Keys, M.SoloMount.Values)
+	C.SoloMDD:UpdateChoices(M.SoloMount:GetChoices(), M.SoloMount:GetValues())
 	C.SoloMDD:UpdateValue()
-	C.MultiMDD:UpdateChoices(M.MultiMount.Keys, M.MultiMount.Values)
+	C.MultiMDD:UpdateChoices(M.MultiMount:GetChoices(), M.MultiMount:GetValues())
 	C.MultiMDD:UpdateValue()
 end
 
@@ -608,7 +642,7 @@ end
 function Settings:SettingsChanged()
 Inputs:				None
 Outputs:			None
-Description:	Fired when the player first loads in after a settings reset is forced
+Description:	Fired when the player first loads in after a settings reset is forced.
 ------------------------------------------------------------------------------------------------]]--
 function Settings:SettingsChanged()
 	local Parent = self:GetParent()
@@ -616,6 +650,7 @@ function Settings:SettingsChanged()
 		Parent:Chat(zo_strformat("Static's Social Features updated to <<1>>. Settings have been reset.", Parent.addonVersion))
 		Parent.SV.settingsChanged = false
 	end
+	EM:UnregisterForEvent(self.eventSpace, EVENT_PLAYER_ACTIVATED)
 end
 
 
@@ -631,11 +666,6 @@ end
 
 
 --[[------------------------------------------------------------------------------------------------
-StaticsSocialFeaturesInitSettings(Parent)
-Inputs:				Parent          - The parent object of the object to be created.
-Outputs:			SDM             - The new object created.
-Description:	Global function to create a new instance of this object.
+Global template assignment
 ------------------------------------------------------------------------------------------------]]--
-function StaticsSocialFeaturesInitSettings(Parent)
-	return Settings:New(Parent)
-end
+StaticsSocialFeatures.Settings = Settings

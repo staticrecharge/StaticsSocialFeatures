@@ -13,8 +13,10 @@ local CSA = CENTER_SCREEN_ANNOUNCE
 
 --[[------------------------------------------------------------------------------------------------
 Notifications Class Initialization
-Notifications    - Object containing all functions, tables, variables,and constants.
-  |-  Parent    - Reference to parent object.
+Notifications    										              - Parent object containing all functions, tables, variables, constants and other data managers.
+├─ :IsInitialized()                               - Returns true if the object has been successfully initialized.
+├─ :Notify(message)															  - Updates the notification settings.
+└─ :GetParent()                                   - Returns the parent object of this object for reference to parent variables.
 ------------------------------------------------------------------------------------------------]]--
 local Notifications = ZO_InitializingObject:Subclass()
 
@@ -44,6 +46,19 @@ function Notifications:Initialize(Parent)
       ZO_Alert(UI_ALERT_CATEGORY_ALERT, SV.notificationSound, message)
     end,
   }
+
+  self.initialized = true
+end
+
+
+--[[------------------------------------------------------------------------------------------------
+Notifications:IsInitialized()
+Inputs:				None
+Outputs:			initialized                         - bool for object initialized state
+Description:	Returns true if the object has been successfully initialized.
+------------------------------------------------------------------------------------------------]]--
+function Notifications:IsInitialized()
+  return self.initialized
 end
 
 
@@ -72,11 +87,6 @@ end
 
 
 --[[------------------------------------------------------------------------------------------------
-StaticsSocialFeaturesInitNotifications(Parent)
-Inputs:				Parent          - The parent object of the object to be created.
-Outputs:			Notifications              - The new object created.
-Description:	Global function to create a new instance of this object.
+Global template assignment
 ------------------------------------------------------------------------------------------------]]--
-function StaticsSocialFeaturesInitNotifications(Parent)
-	return Notifications:New(Parent)
-end
+StaticsSocialFeatures.Notifications = Notifications

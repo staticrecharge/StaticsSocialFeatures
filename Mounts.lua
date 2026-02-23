@@ -15,8 +15,18 @@ local CDM = ZO_COLLECTIBLE_DATA_MANAGER
 
 --[[------------------------------------------------------------------------------------------------
 Mounts Class Initialization
-Mounts    - Object containing all functions, tables, variables,and constants.
-  |-  Parent    - Reference to parent object.
+Mounts    													              - Parent object containing all functions, tables, variables, constants and other data managers.
+├─ :IsInitialized()                               - Returns true if the object has been successfully initialized.
+├─ :PlayerIdle()															    - Checks if the player is idle and updates the timer accordingly.
+├─ :MountPlayer()                									- Mounts the targetted player.
+├─ :UpdateMountData()               							- Updates the mount lists.
+├─ :OnGroupMemberJoined(eventCode, memberCharacterName, memberDisplayName, isLocalPlayer) 
+│                                                 - Updates the mount to the multi mount.
+├─ :OnGroupMemberLeft(eventCode, memberCharacterName, reason, isLocalPlayer, isLeader, memberDisplayName, actionRequiredVote)
+│                                     						- Updates the mount to the solo mount.
+├─ :OnPlayerActivated(eventCode, initial)					- Updates the mount if group status changed while player was offline.
+├─ :MountContextMenu()														- Adds an entry to the Mount list context menu.
+└─ :GetParent()                                   - Returns the parent object of this object for reference to parent variables.
 ------------------------------------------------------------------------------------------------]]--
 local Mounts = ZO_InitializingObject:Subclass()
 
@@ -50,9 +60,23 @@ function Mounts:Initialize(Parent)
   -- Event Registrations
 	EM:RegisterForEvent(self.eventSpace, EVENT_GROUP_MEMBER_JOINED, function(...) self:OnGroupMemberJoined(...) end)
 	EM:RegisterForEvent(self.eventSpace, EVENT_GROUP_MEMBER_LEFT, function(...) self:OnGroupMemberLeft(...) end)
+	EM:RegisterForEvent(self.eventSpace, EVENT_PLAYER_ACTIVATED, function(...) self:OnPlayerActivated(...) end)
 
   -- Keybindings associations
 	ZO_CreateStringId("SI_BINDING_NAME_MOUNT_PLAYER", "Mount Group Member")
+
+	self.initialized = true
+end
+
+
+--[[------------------------------------------------------------------------------------------------
+Mounts:IsInitialized()
+Inputs:				None
+Outputs:			initialized                         - bool for object initialized state
+Description:	Returns true if the object has been successfully initialized.
+------------------------------------------------------------------------------------------------]]--
+function Mounts:IsInitialized()
+  return self.initialized
 end
 
 
@@ -63,7 +87,46 @@ Outputs:			None
 Description:	Mounts the targetted player
 ------------------------------------------------------------------------------------------------]]--
 function Mounts:MountPlayer()
-	UseMountAsPassenger(GetRawUnitName("reticleoverplayer"))
+	-- if not grouped then don't need to process anything
+	if not IsUnitGrouped("player") then return end
+
+	local Parent = self:GetParent()
+
+	local function DistanceToUnit(unitID)
+		local _, selfX, selfY, selfH = GetUnitWorldPosition("player")
+		local _, targetX, targetY, targetH = GetUnitWorldPosition(unitID)
+		local nDistance = zo_distance3D(targetX, targetY, targetH, selfX, selfY, selfH) / 100
+		return nDistance
+	end
+	
+	local GroupMultiMounts = {}
+	local displayNamePref = nil
+	local isMountable = false
+	for iD = 1, GetGroupSize() do
+		local playerID = GetGroupUnitTagByIndex(iD)
+		local playerCharName = GetUnitName(playerID)
+		local playerDisplayName = GetUnitDisplayName(playerID)
+		local distance = DistanceToUnit(playerID)
+		local mountedState, hasEnabledGroupMount, hasFreePassengerSlot = GetTargetMountedStateInfo(playerDisplayName)
+		if mountedState == MOUNTED_STATE_MOUNT_RIDER and hasEnabledGroupMount and hasFreePassengerSlot then isMountable = true else isMountable = false end
+		if not ZO_ShouldPreferUserId() then displayNamePref = playerCharName else displayNamePref = playerDisplayName end
+		displayNamePref = zo_strformat("<<1>>", displayNamePref)--<< Strip genders
+		if playerDisplayName ~= GetUnitDisplayName("player") and IsUnitOnline(playerID) and IsUnitInGroupSupportRange(playerID) and isMountable and distance < 5.0 then
+			table.insert(GroupMultiMounts, {name = playerDisplayName, distance = distance})
+		end
+	end
+	if #GroupMultiMounts > 0 then
+		table.sort(GroupMultiMounts, function(a, b) return a.distance < b.distance end)
+		--dismount
+		EnablePreviewMode(true)
+		DisablePreviewMode()
+		UseMountAsPassenger(GroupMultiMounts[1].name)
+		if Parent.SV.multiMountNotify then
+			Parent.Notifications:Notify(zo_strformat("Mounted <<1>> as a passenger.", displayNamePref))
+		end
+	else
+		Parent.Notifications:Notify(zo_strformat("No multi-mount within range."))
+	end
 end
 
 
@@ -71,7 +134,7 @@ end
 function Mounts:UpdateMountData()
 Inputs:				None
 Outputs:			None
-Description:	Updates the mount lists
+Description:	Updates the mount lists.
 ------------------------------------------------------------------------------------------------]]--
 function Mounts:UpdateMountData()
   local Parent = self:GetParent()
@@ -119,38 +182,52 @@ function Mounts:UpdateMountData()
 	table.insert(SoloMountCollectionData, 1, {id = 7, name = "-- Random Favorite Mount"}) --offset id by 6, first collectible that's not a mount
 	table.insert(SoloMountCollectionData, 2, {id = 8, name = "-- Random Mount"})
 
+	local Values = {}
+	local Choices = {}
 	for index, value in ipairs(MultiMountCollectionData) do
-		self.MultiMount.Values[index] = value.id
-		self.MultiMount.Keys[index] = value.name
+		Values[index] = value.id
+		Choices[index] = value.name
 	end
+	self.MultiMount = LibStatic.PairedList:New(Choices, Values)
+	Values = {}
+	Choices = {}
 	for index, value in ipairs(SoloMountCollectionData) do
-		self.SoloMount.Values[index] = value.id
-		self.SoloMount.Keys[index] = value.name
+		Values[index] = value.id
+		Choices[index] = value.name
 	end
+	self.SoloMount = LibStatic.PairedList:New(Choices, Values)
 end
 
 
 --[[------------------------------------------------------------------------------------------------
-function Mounts:OnGroupMemberJoined()
-Inputs:				None
+function Mounts:OnGroupMemberJoined(eventCode, memberCharacterName, memberDisplayName, isLocalPlayer)
+Inputs:				eventCode 													- ZOS eventcode
+							memberCharacterName 								- Character name of who joined
+							memberDisplayName 									- Display name of who joined
+							isLocalPlayer 											- True if the person who joined is the user
 Outputs:			None
-Description:	Updates the mount to the multi mount
+Description:	Updates the mount to the multi mount.
 ------------------------------------------------------------------------------------------------]]--
 function Mounts:OnGroupMemberJoined(eventCode, memberCharacterName, memberDisplayName, isLocalPlayer)
   local Parent = self:GetParent()
 	if isLocalPlayer and Parent.CH.multiMountEnable then
-    local Parent = self:GetParent()
 		UseCollectible(Parent.CH.multiMount, GAMEPLAY_ACTOR_CATEGORY_PLAYER)
-		Parent:DebugMsg(zo_strformat("Set to multi mount: <<1>>", GetCollectibleLink(Parent.CH.multiMount)))
+		Parent.Chat:Debug(zo_strformat("Set to multi mount: <<1>>", GetCollectibleLink(Parent.CH.multiMount)))
 	end
 end
 
 
 --[[------------------------------------------------------------------------------------------------
-function Mounts:OnGroupMemberLeft()
-Inputs:				None
+function Mounts:OnGroupMemberLeft(eventCode, memberCharacterName, reason, isLocalPlayer, isLeader, memberDisplayName, actionRequiredVote)
+Inputs:				eventCode 													- ZOS eventcode
+							memberCharacterName 								- Character name of who left
+							reason 															- Reason code for the leave
+							isLocalPlayer 											- True if the person who left is the user
+							isLeader 														- True if it was the leader that left
+							memberDisplayName 									- Display name of who left
+							actionRequiredVote 									- True if it was a vote kick
 Outputs:			None
-Description:	Updates the mount to the solo mount
+Description:	Updates the mount to the solo mount.
 ------------------------------------------------------------------------------------------------]]--
 function Mounts:OnGroupMemberLeft(eventCode, memberCharacterName, reason, isLocalPlayer, isLeader, memberDisplayName, actionRequiredVote)
   local Parent = self:GetParent()
@@ -159,9 +236,31 @@ function Mounts:OnGroupMemberLeft(eventCode, memberCharacterName, reason, isLoca
 			SetRandomMountType(Parent.CH.soloMount - 6, GAMEPLAY_ACTOR_CATEGORY_PLAYER)
 		else
 			UseCollectible(Parent.CH.soloMount, GAMEPLAY_ACTOR_CATEGORY_PLAYER)
-			Parent:DebugMsg(zo_strformat("Set to solo mount: <<1>>", GetCollectibleLink(Parent.CH.soloMount)))
+			Parent.Chat:Debug(zo_strformat("Set to solo mount: <<1>>", GetCollectibleLink(Parent.CH.soloMount)))
 		end
 	end
+end
+
+
+--[[------------------------------------------------------------------------------------------------
+function Mounts:OnPlayerActivated(eventCode, initial)
+Inputs:				eventCode 													- ZOS eventcode
+							initial 														- true if this is the initial load
+Outputs:			None
+Description:	Updates the mount if group status changed while player was offline.
+------------------------------------------------------------------------------------------------]]--
+function Mounts:OnPlayerActivated(eventCode, initial)
+  local Parent = self:GetParent()
+	if initial and Parent.CH.multiMountEnable then
+		if IsUnitGrouped("player") then
+			UseCollectible(Parent.CH.multiMount, GAMEPLAY_ACTOR_CATEGORY_PLAYER)
+			Parent.Chat:Debug(zo_strformat("Set to multi mount: <<1>>", GetCollectibleLink(Parent.CH.multiMount)))
+		else
+			UseCollectible(Parent.CH.soloMount, GAMEPLAY_ACTOR_CATEGORY_PLAYER)
+			Parent.Chat:Debug(zo_strformat("Set to solo mount: <<1>>", GetCollectibleLink(Parent.CH.soloMount)))
+		end
+	end
+	EM:UnregisterForEvent(self.eventSpace, EVENT_PLAYER_ACTIVATED)
 end
 
 
@@ -177,12 +276,12 @@ function Mounts:MountContextMenu()
 		if self_.collectibleData:GetCategoryType() == COLLECTIBLE_CATEGORY_TYPE_MOUNT and Parent.CH.multiMountEnable then
 			AddCustomMenuItem("SSF Set Mount", function()
 				local id = self_.collectibleData:GetId()
-				local index = Parent:ReverseTableLookUp(id, self.SoloMount.Values)
+				local index = self.SoloMount:GetChoiceByValue(id)
 				if index then
 					Parent.CH.soloMount = id
 					return
 				end
-				index = Parent:ReverseTableLookUp(id, self.MultiMount.Values)
+				index = self.MultiMount:GetChoiceByValue(id)
 				if index then
 					Parent.CH.multiMount = id
 					return
@@ -221,11 +320,6 @@ end
 
 
 --[[------------------------------------------------------------------------------------------------
-StaticsSocialFeaturesInitMounts(Parent)
-Inputs:				Parent          - The parent object of the object to be created.
-Outputs:			Notifications              - The new object created.
-Description:	Global function to create a new instance of this object.
+Global template assignment
 ------------------------------------------------------------------------------------------------]]--
-function StaticsSocialFeaturesInitMounts(Parent)
-	return Mounts:New(Parent)
-end
+StaticsSocialFeatures.Mounts = Mounts

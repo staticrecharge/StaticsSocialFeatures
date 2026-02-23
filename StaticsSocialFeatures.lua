@@ -1,7 +1,7 @@
 --[[------------------------------------------------------------------------------------------------
 Title:					Static's Social Features
 Author:					Static_Recharge
-Version:				1.2.1
+Version:				1.2.3
 Description:		Adds specific social featues.
 ------------------------------------------------------------------------------------------------]]--
 
@@ -15,73 +15,41 @@ local CR = CHAT_ROUTER
 
 
 --[[------------------------------------------------------------------------------------------------
-SSF Class Initialization
-SSF    - Parent object containing all functions, tables, variables, constants and other data managers.
-  |-  Defaults    - Default values for saved vars and settings menu items.
+StaticsSocialFeatures Class Initialization
+StaticsSocialFeatures    													- Parent object containing all functions, tables, variables, constants and other data managers.
+├─ :IsInitialized()                               - Returns true if the object has been successfully initialized.
+├─ :LogoutQuitHook()															- Hooks into the logout and quit function to set character status if needed before actually logging out.
+├─ :FriendMessageHook()                						- Hooks into the friends message to allow only showing for fav friends.
+├─ :GetCharacterIndex()                						- Returns the index of the curent character from the saved vars table.
+└─ :Test(...)                                     - For internal add-on testing only.
 ------------------------------------------------------------------------------------------------]]--
-local SSF = ZO_InitializingObject:Subclass()
+StaticsSocialFeatures = {}
+
 
 --[[------------------------------------------------------------------------------------------------
-SSF:Initialize()
+StaticsSocialFeatures:Initialize()
 Inputs:				None
 Outputs:			None
 Description:	Initializes all of the variables, object managers, slash commands and main event
 							callbacks.
 ------------------------------------------------------------------------------------------------]]--
-function SSF:Initialize()
+function StaticsSocialFeatures:Initialize()
 	-- Static definitions
 	self.addonName = "StaticsSocialFeatures"
-	self.addonVersion = "1.2.1"
+	self.addonVersion = "1.2.3"
 	self.varsVersion = 2 -- SHOULD BE 2
 	self.charVarsVersion = 1
 	self.author = "|CFF0000Static_Recharge|r"
-	self.chatPrefix = "|cFF6600[SSF]:|r "
-	self.chatTextColor = "|cFFFFFF"
-	self.chatSuffix = "|r"
 
-	self.PlayerStatus = {
-		Disabled = 5,
-		Online = PLAYER_STATUS_ONLINE,
-		Away = PLAYER_STATUS_AWAY,
-		["Do Not Disturb"] = PLAYER_STATUS_DO_NOT_DISTURB,
-		Offline = PLAYER_STATUS_OFFLINE,
-		Keys = {"Disabled", "Online", "Away", "Do Not Disturb", "Offline"},
-		Values = {5, PLAYER_STATUS_ONLINE, PLAYER_STATUS_AWAY, PLAYER_STATUS_DO_NOT_DISTURB, PLAYER_STATUS_OFFLINE},
-	}
+	self.PlayerStatus = LibStatic.PairedList:New({"Disabled", "Online", "Away", "Do Not Disturb", "Offline"}, {5, PLAYER_STATUS_ONLINE, PLAYER_STATUS_AWAY, PLAYER_STATUS_DO_NOT_DISTURB, PLAYER_STATUS_OFFLINE})
 
-	self.AllFavNone = {
-		All = 1,
-		Fav = 2,
-		None = 3,
-		Keys = {"All", "Fav", "None"},
-		Values = {1, 2, 3},
-	}
+	self.AllFavNone = LibStatic.PairedList:New({"All", "Fav", "None"}, {1, 2, 3})
 
-	self.NotificationTypes = {
-    ["Chat"] = 1,
-    ["Center Screen"] = 2,
-		["Alert"] = 3,
-		Keys = {"Chat", "Center Screen", "Alert"},
-		Values = {1, 2, 3},
-  }
+	self.NotificationTypes = LibStatic.PairedList:New({"Chat", "Center Screen", "Alert"}, {1, 2, 3})
 
-  self.NotificationSizes = {
-    Small = CSA_CATEGORY_SMALL_TEXT,
-    Medium = CSA_CATEGORY_MAJOR_TEXT,
-    Large = CSA_CATEGORY_LARGE_TEXT,
-		Keys = {"Small", "Medium", "Large"},
-		Values = {CSA_CATEGORY_SMALL_TEXT, CSA_CATEGORY_MAJOR_TEXT, CSA_CATEGORY_LARGE_TEXT},
-  }
+  self.NotificationSizes = LibStatic.PairedList:New({"Small", "Medium", "Large"}, {CSA_CATEGORY_SMALL_TEXT, CSA_CATEGORY_MAJOR_TEXT, CSA_CATEGORY_LARGE_TEXT})
 
-	self.NotificationSounds = {
-		["None"] = SOUNDS.NONE,
-		["Book Acquired"] = SOUNDS.BOOK_ACQUIRED,
-		["Default Click"] = SOUNDS.DEFAULT_CLICK,
-		["Map Open"] = SOUNDS.MAP_WINDOW_OPEN,
-		["Error"] = SOUNDS.GENERAL_ALERT_ERROR,
-		Keys = {"None", "Book", "Default", "Map Open", "Error"},
-		Values = {SOUNDS.NONE, SOUNDS.BOOK_ACQUIRED, SOUNDS.DEFAULT_CLICK, SOUNDS.MAP_WINDOW_OPEN, SOUNDS.GENERAL_ALERT_ERROR},
-	}
+	self.NotificationSounds = LibStatic.PairedList:New({"None", "Book", "Default", "Map Open", "Error"}, {SOUNDS.NONE, SOUNDS.BOOK_ACQUIRED, SOUNDS.DEFAULT_CLICK, SOUNDS.MAP_WINDOW_OPEN, SOUNDS.GENERAL_ALERT_ERROR})
 
 	self.IconTextures = {
 		"/esoui/art/compass/target_gold_star.dds",					-- Gold Star
@@ -104,8 +72,8 @@ function SSF:Initialize()
 	self.multiRiderSubCatID = 75
 
 	self.Defaults = {
-		chatMsgEnabled = true,
-		debugMode = false,
+		chatEnabled = true,
+		debugEnabled = false,
 		charOverride = self.PlayerStatus.Disabled,
 		charOverrideLogin = false,
 		charOverrideLogout = false,
@@ -139,6 +107,7 @@ function SSF:Initialize()
 		sharedGuildsGroup = true,
 		Friends = {},
 		Ignored = {},
+		multiMountNotify = true,
 	}
 	self.CharDefaults = {
 		multiMountEnable = false,
@@ -179,12 +148,22 @@ function SSF:Initialize()
 	table.sort(NewData, function(a, b) return a.name < b.name end)
 	self.SV.Characters = NewData
 
+	-- Library Initializations
+	local Options = {
+		addonIdentifier = "SSF",
+		prefixColor = "FF6600",
+		textColor = "FFFFFF",
+		chatEnabled = self.SV.chatEnabled,
+		debugEnabled = self.SV.debugEnabled,
+	}
+	self.Chat = LibStatic.Chat:New(Options)
+
 	-- Child Initializations
-	self.Status = StaticsSocialFeaturesInitStatus(self)
-	self.Notifications = StaticsSocialFeaturesInitNotifications(self)
-	self.Lists = StaticsSocialFeaturesInitLists(self)
-	self.Mounts = StaticsSocialFeaturesInitMounts(self)
-	self.Settings = StaticsSocialFeaturesInitSettings(self)
+	self.Status = self.Status:New(self)
+	self.Notifications = self.Notifications:New(self)
+	self.Lists = self.Lists:New(self)
+	self.Mounts = self.Mounts:New(self)
+	self.Settings = self.Settings:New(self)
 
 	-- ZO Hooks
 	self:LogoutQuitHook()
@@ -198,22 +177,33 @@ end
 
 
 --[[------------------------------------------------------------------------------------------------
-function SSF:LogoutQuitHook()
+StaticsSocialFeatures:IsInitialized()
+Inputs:				None
+Outputs:			initialized                         - bool for object initialized state
+Description:	Returns true if the object has been successfully initialized.
+------------------------------------------------------------------------------------------------]]--
+function StaticsSocialFeatures:IsInitialized()
+  return self.initialized
+end
+
+
+--[[------------------------------------------------------------------------------------------------
+function StaticsSocialFeatures:LogoutQuitHook()
 Inputs:			  None
 Outputs:			None
 Description:	Hooks into the logout and quit function to set character status if needed before actually logging out.
 ------------------------------------------------------------------------------------------------]]--
-function SSF:LogoutQuitHook()
+function StaticsSocialFeatures:LogoutQuitHook()
 	function self:OnLogout()
-		self:DebugMsg("Logout/Quit prehook started.")
+		self.Chat:Debug("Logout/Quit prehook started.")
 		if self.SV.accountOverrideEnabled and self.SV.accountOverrideLogout then
 			SelectPlayerStatus(self.SV.accountOverride)
-			self:DebugMsg(zo_strformat("Player status set to <<1>>", self.SV.accountOverride))
+			self.Chat:Debug(zo_strformat("Player status set to <<1>>", self.SV.accountOverride))
 		else
 			local i = self:GetCharacterIndex()
 			if self.SV.Characters[i].charOverride ~= self.PlayerStatus.Disabled and self.SV.Characters[i].charOverrideLogout then
 				SelectPlayerStatus(self.SV.Characters[i].charOverride)
-				self:DebugMsg(zo_strformat("Player status set to <<1>>", self.SV.Characters[i].charOverride))
+				self.Chat:Debug(zo_strformat("Player status set to <<1>>", self.SV.Characters[i].charOverride))
 			end
 		end
 	end
@@ -223,14 +213,14 @@ end
 
 
 --[[------------------------------------------------------------------------------------------------
-function SSF:FriendMessageHook()
+function StaticsSocialFeatures:FriendMessageHook()
 Inputs:			  None
 Outputs:			None
 Description:	Hooks into the friends message to allow only showing for fav friends.
 ------------------------------------------------------------------------------------------------]]--
-function SSF:FriendMessageHook()
+function StaticsSocialFeatures:FriendMessageHook()
 	function self:OnFriendStatusChanged(eventCode, displayName, characterName, oldStatus, newStatus)
-		self:DebugMsg("Friend Message prehook started.")
+		self.Chat:Debug("Friend Message prehook started.")
 		if self.SV.friendMsg == self.AllFavNone.None then return end
 		if self.SV.friendMsg == self.AllFavNone.Fav and self.SV.Favs[displayName] then
 			if not self.SV.friendMsgChat and self.SV.notificationType ~= self.NotificationTypes.Chat then
@@ -258,12 +248,12 @@ end
 
 
 --[[------------------------------------------------------------------------------------------------
-function SSF:GetCharacterIndex()
+function StaticsSocialFeatures:GetCharacterIndex()
 Inputs:			  None
 Outputs:			index 					- The index of the character
 Description:	Returns the index of the curent character from the saved vars table.
 ------------------------------------------------------------------------------------------------]]--
-function SSF:GetCharacterIndex()
+function StaticsSocialFeatures:GetCharacterIndex()
 	local index
 	local id = GetCurrentCharacterId()
 	for i, v in ipairs(self.SV.Characters) do
@@ -277,96 +267,22 @@ end
 
 
 --[[------------------------------------------------------------------------------------------------
-function SSF:ReverseTableLookUp(search, list)
-Inputs:				search, list
-Outputs:			index
-Description:	returns index of found item in list
-------------------------------------------------------------------------------------------------]]--
-function SSF:ReverseTableLookUp(search, list)
-	for index, value in ipairs(list) do
-		if value == search then
-			return index
-		end
-	end
-end
-
-
---[[------------------------------------------------------------------------------------------------
-function SSF:Chat(inputString, ...)
-Inputs:				inputString			- The input string to be formatted and sent to chat. Can be bools.
-							...							- More inputs to be placed on new lines within the same message.
-Outputs:			None
-Description:	Formats text to be sent to the chat box for the user. Bools will be converted to 
-							"true" or "false" text formats. All inputs after the first will be placed on a new 
-							line within the message. Only the first line gets the add-on prefix.
-------------------------------------------------------------------------------------------------]]--
-function SSF:Chat(inputString, ...)
-	-- if chat isn't enabled then return
-	if not self.SV.chatMsgEnabled then return end
-
-	local Args = {...}
-
-	-- Print first line
-	CS:AddMessage(zo_strformat("<<1>><<2>><<3>><<4>>", self.chatPrefix, self.chatTextColor, inputString, self.chatSuffix))
-
-	-- Print subsequent lines if any
-	if #Args > 0 then
-		for i,v in ipairs(Args) do
-		  CS:AddMessage(zo_strformat("<<1>><<2>><<3>>", self.chatTextColor, v, self.chatSuffix))
-		end
-	end
-end
-
-
---[[------------------------------------------------------------------------------------------------
-function function SSF:BoolConvert(bool, returnType)
-Inputs:				bool 						- input bool to convert
-Outputs:			string 					- string containing the converted bool, or the input if not a bool
-Description:	Returns a converted bool or the input if not a bool.
-------------------------------------------------------------------------------------------------]]--
-function SSF:BoolConvert(bool)
-	if type(bool) ~= "boolean" then
-		if bool then
-			return "true"
-		else
-			return "false"
-		end
-	end
-	return bool
-end
-
-
---[[------------------------------------------------------------------------------------------------
-function SSF:DebugMsg(inputString)
-Inputs:				inputString			- The debug string to print to chat
-Outputs:			None
-Description:	Checks if debugging mode is on and if so, sends the input message to chat.
-------------------------------------------------------------------------------------------------]]--
-function SSF:DebugMsg(inputString)
-	-- if debugging isn't enabled or the string is empty or nil then return
-	if not self.SV.debugMode or inputString == false or inputString == "" then return end
-
-	self:Chat(zo_strformat("[DEBUG] <<1>>", inputString))
-end
-
-
---[[------------------------------------------------------------------------------------------------
-function SSF:Test(...)
+function StaticsSocialFeatures:Test(...)
 Inputs:				...							- Various test inputs.
 Outputs:			None
 Description:	For internal add-on testing only.
 ------------------------------------------------------------------------------------------------]]--
-function SSF:Test(...)
+function StaticsSocialFeatures:Test(...)
 	--self.Notifications:Notify(...)
 	--self:Chat(...)
 end
 
 
 --[[------------------------------------------------------------------------------------------------
-Main add-on event registration. Creates the global object, StaticsSocialFeatures, of the SSF class.
+Main add-on event registration. Creates the global object, StaticsSocialFeatures, of the StaticsSocialFeatures class.
 ------------------------------------------------------------------------------------------------]]--
 EM:RegisterForEvent("StaticsSocialFeatures", EVENT_ADD_ON_LOADED, function(eventCode, addonName)
 	if addonName ~= "StaticsSocialFeatures" then return end
 	EM:UnregisterForEvent("StaticsSocialFeatures", EVENT_ADD_ON_LOADED)
-	StaticsSocialFeatures = SSF:New()
+	StaticsSocialFeatures:Initialize()
 end)
