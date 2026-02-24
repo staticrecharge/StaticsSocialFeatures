@@ -41,15 +41,15 @@ function StaticsSocialFeatures:Initialize()
 	self.charVarsVersion = 1
 	self.author = "|CFF0000Static_Recharge|r"
 
-	self.PlayerStatus = LibStatic.PairedList:New({"Disabled", "Online", "Away", "Do Not Disturb", "Offline"}, {5, PLAYER_STATUS_ONLINE, PLAYER_STATUS_AWAY, PLAYER_STATUS_DO_NOT_DISTURB, PLAYER_STATUS_OFFLINE})
+	self.PlayerStatus = LibStatic.PAIREDLIST:New({"Disabled", "Online", "Away", "Do Not Disturb", "Offline"}, {5, PLAYER_STATUS_ONLINE, PLAYER_STATUS_AWAY, PLAYER_STATUS_DO_NOT_DISTURB, PLAYER_STATUS_OFFLINE})
 
-	self.AllFavNone = LibStatic.PairedList:New({"All", "Fav", "None"}, {1, 2, 3})
+	self.AllFavNone = LibStatic.PAIREDLIST:New({"All", "Fav", "None"}, {1, 2, 3})
 
-	self.NotificationTypes = LibStatic.PairedList:New({"Chat", "Center Screen", "Alert"}, {1, 2, 3})
+	self.NotificationTypes = LibStatic.PAIREDLIST:New({"Chat", "Center Screen", "Alert"}, {1, 2, 3})
 
-  self.NotificationSizes = LibStatic.PairedList:New({"Small", "Medium", "Large"}, {CSA_CATEGORY_SMALL_TEXT, CSA_CATEGORY_MAJOR_TEXT, CSA_CATEGORY_LARGE_TEXT})
+  self.NotificationSizes = LibStatic.PAIREDLIST:New({"Small", "Medium", "Large"}, {CSA_CATEGORY_SMALL_TEXT, CSA_CATEGORY_MAJOR_TEXT, CSA_CATEGORY_LARGE_TEXT})
 
-	self.NotificationSounds = LibStatic.PairedList:New({"None", "Book", "Default", "Map Open", "Error"}, {SOUNDS.NONE, SOUNDS.BOOK_ACQUIRED, SOUNDS.DEFAULT_CLICK, SOUNDS.MAP_WINDOW_OPEN, SOUNDS.GENERAL_ALERT_ERROR})
+	self.NotificationSounds = LibStatic.PAIREDLIST:New({"None", "Book", "Default", "Map Open", "Error"}, {SOUNDS.NONE, SOUNDS.BOOK_ACQUIRED, SOUNDS.DEFAULT_CLICK, SOUNDS.MAP_WINDOW_OPEN, SOUNDS.GENERAL_ALERT_ERROR})
 
 	self.IconTextures = {
 		"/esoui/art/compass/target_gold_star.dds",					-- Gold Star
@@ -156,14 +156,14 @@ function StaticsSocialFeatures:Initialize()
 		chatEnabled = self.SV.chatEnabled,
 		debugEnabled = self.SV.debugEnabled,
 	}
-	self.Chat = LibStatic.Chat:New(Options)
+	self.Chat = LibStatic.CHAT:New(Options)
 
 	-- Child Initializations
-	self.Status = self.Status:New(self)
-	self.Notifications = self.Notifications:New(self)
-	self.Lists = self.Lists:New(self)
-	self.Mounts = self.Mounts:New(self)
-	self.Settings = self.Settings:New(self)
+	self.Status = self.STATUS:New(self)
+	self.Notifications = self.NOTIFICATIONS:New(self)
+	self.Lists = self.LISTS:New(self)
+	self.Mounts = self.MOUNTS:New(self)
+	self.Settings = self.SETTINGS:New(self)
 
 	-- ZO Hooks
 	self:LogoutQuitHook()

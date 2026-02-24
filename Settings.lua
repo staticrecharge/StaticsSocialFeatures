@@ -21,7 +21,7 @@ Settings    													            - Parent object containing all functions, t
 ├─ :IsInitialized()                               - Returns true if the object has been successfully initialized.
 ├─ :CreateSettingsPanel()													- Creates and registers the settings panel with LibAddonMenu.
 ├─ :Update()                											- Updates the settings panel in LibAddonMenu.
-├─ :SettingsChanged()               							- Fired when the player first loads in after a settings reset is forced.
+├─ :Changed()               							- Fired when the player first loads in after a settings reset is forced.
 └─ :GetParent()                                   - Returns the parent object of this object for reference to parent variables.
 ------------------------------------------------------------------------------------------------]]--
 local Settings = ZO_InitializingObject:Subclass()
@@ -40,7 +40,7 @@ function Settings:Initialize(Parent)
   self:CreateSettingsPanel()
 
 	-- Event Registrations
-	EM:RegisterForEvent(self.eventSpace, EVENT_PLAYER_ACTIVATED, function(...) self:SettingsChanged() end)
+	EM:RegisterForEvent(self.eventSpace, EVENT_PLAYER_ACTIVATED, function(...) self:Changed() end)
 
 	self.initialized = true
 end
@@ -639,12 +639,12 @@ end
 
 
 --[[------------------------------------------------------------------------------------------------
-function Settings:SettingsChanged()
+function Settings:Changed()
 Inputs:				None
 Outputs:			None
 Description:	Fired when the player first loads in after a settings reset is forced.
 ------------------------------------------------------------------------------------------------]]--
-function Settings:SettingsChanged()
+function Settings:Changed()
 	local Parent = self:GetParent()
 	if Parent.SV.settingsChanged then 
 		Parent:Chat(zo_strformat("Static's Social Features updated to <<1>>. Settings have been reset.", Parent.addonVersion))
@@ -668,4 +668,4 @@ end
 --[[------------------------------------------------------------------------------------------------
 Global template assignment
 ------------------------------------------------------------------------------------------------]]--
-StaticsSocialFeatures.Settings = Settings
+StaticsSocialFeatures.SETTINGS = Settings

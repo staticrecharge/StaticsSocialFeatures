@@ -147,8 +147,8 @@ function Mounts:UpdateMountData()
 		return collectibleData:IsCategoryType(COLLECTIBLE_CATEGORY_TYPE_MOUNT)
 	end
 
-	local SoloMountCollectionData = {}
-	local MultiMountCollectionData = {}
+	local SoloMountCollectionData = {id = {}, name = {}}
+	local MultiMountCollectionData = {id = {}, name = {}}
 
 	--Iterate over the main categories and do not use outfits or houses
 	for idx, categoryData in CDM:CategoryIterator({IsNotMountCategory}) do
@@ -168,34 +168,28 @@ function Mounts:UpdateMountData()
 						}
 					end
 					if subCategoryData:GetId() == Parent.multiRiderSubCatID then
-						table.insert(MultiMountCollectionData, {id = id, name = name})
+						table.insert(MultiMountCollectionData.id, id)
+						table.insert(MultiMountCollectionData.name, name)
 					else
-						table.insert(SoloMountCollectionData, {id = id, name = name})
+						table.insert(SoloMountCollectionData.id, id)
+						table.insert(SoloMountCollectionData.name, name)
 					end
 				end
 			end
 		end
 	end
 
-	table.sort(MultiMountCollectionData, function(a, b) return a.name < b.name end)
-	table.sort(SoloMountCollectionData, function(a, b) return a.name < b.name end)
-	table.insert(SoloMountCollectionData, 1, {id = 7, name = "-- Random Favorite Mount"}) --offset id by 6, first collectible that's not a mount
-	table.insert(SoloMountCollectionData, 2, {id = 8, name = "-- Random Mount"})
+	-- add in virtual mount selections
+	table.insert(SoloMountCollectionData.id, 1, 7) --offset id by 6, first collectible that's not a mount
+	table.insert(SoloMountCollectionData.name, 1, "-- Random Favorite Mount")
+	table.insert(SoloMountCollectionData.id, 2, 8)
+	table.insert(SoloMountCollectionData.name, 2, "-- Random Mount")
 
-	local Values = {}
-	local Choices = {}
-	for index, value in ipairs(MultiMountCollectionData) do
-		Values[index] = value.id
-		Choices[index] = value.name
-	end
-	self.MultiMount = LibStatic.PairedList:New(Choices, Values)
-	Values = {}
-	Choices = {}
-	for index, value in ipairs(SoloMountCollectionData) do
-		Values[index] = value.id
-		Choices[index] = value.name
-	end
-	self.SoloMount = LibStatic.PairedList:New(Choices, Values)
+	-- convert to paired lists and sort
+	self.MultiMount = LibStatic.PAIREDLIST:New(MultiMountCollectionData.name, MultiMountCollectionData.id)
+	self.SoloMount = LibStatic.PAIREDLIST:New(SoloMountCollectionData.name, SoloMountCollectionData.id)
+	self.MultiMount:Sort()
+	self.SoloMount:Sort()
 end
 
 
@@ -322,4 +316,4 @@ end
 --[[------------------------------------------------------------------------------------------------
 Global template assignment
 ------------------------------------------------------------------------------------------------]]--
-StaticsSocialFeatures.Mounts = Mounts
+StaticsSocialFeatures.MOUNTS = Mounts

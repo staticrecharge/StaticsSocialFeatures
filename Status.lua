@@ -176,7 +176,6 @@ function Status:OnPlayerActivated(eventCode, initial)
 	Parent.Chat:Debug("OnPlayerActivated event fired.")
 	Parent.Chat:Debug(zo_strformat("Player Status is <<1>>", GetPlayerStatus()))
 	if initial then
-		Parent.Settings:SettingsChanged()
 		if Parent.initialized then Parent.Chat:Debug("Initialized.") end
 		local i = Parent:GetCharacterIndex()
 		Parent.Chat:Debug(zo_strformat("Character \"<<1>>\" (<<2>>) loaded.", Parent.SV.Characters[i].name, Parent.SV.Characters[i].id))
@@ -232,4 +231,4 @@ end
 --[[------------------------------------------------------------------------------------------------
 Global template assignment
 ------------------------------------------------------------------------------------------------]]--
-StaticsSocialFeatures.Status = Status
+StaticsSocialFeatures.STATUS = Status

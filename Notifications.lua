@@ -89,4 +89,4 @@ end
 --[[------------------------------------------------------------------------------------------------
 Global template assignment
 ------------------------------------------------------------------------------------------------]]--
-StaticsSocialFeatures.Notifications = Notifications
+StaticsSocialFeatures.NOTIFICATIONS = Notifications
