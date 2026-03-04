@@ -1,6 +1,7 @@
 1.2.3
   - Added support for LibStatic
   - Added check for if in group on login for multirider mount setting
+  - Added new notification sound to list of sounds
 
 1.2.1
   - bug fix for constant offline reminders

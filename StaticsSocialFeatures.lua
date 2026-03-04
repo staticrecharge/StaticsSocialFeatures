@@ -41,15 +41,30 @@ function StaticsSocialFeatures:Initialize()
 	self.charVarsVersion = 1
 	self.author = "|CFF0000Static_Recharge|r"
 
-	self.PlayerStatus = LibStatic.PAIREDLIST:New({"Disabled", "Online", "Away", "Do Not Disturb", "Offline"}, {5, PLAYER_STATUS_ONLINE, PLAYER_STATUS_AWAY, PLAYER_STATUS_DO_NOT_DISTURB, PLAYER_STATUS_OFFLINE})
+	self.PlayerStatus = LibStatic.PAIREDLIST:New(
+		{"Disabled", "Online", "Away", "Do Not Disturb", "Offline"},
+		{5, PLAYER_STATUS_ONLINE, PLAYER_STATUS_AWAY, PLAYER_STATUS_DO_NOT_DISTURB, PLAYER_STATUS_OFFLINE}
+	)
 
-	self.AllFavNone = LibStatic.PAIREDLIST:New({"All", "Fav", "None"}, {1, 2, 3})
+	self.AllFavNone = LibStatic.PAIREDLIST:New(
+		{"All", "Fav", "None"},
+		{1, 2, 3}
+	)
 
-	self.NotificationTypes = LibStatic.PAIREDLIST:New({"Chat", "Center Screen", "Alert"}, {1, 2, 3})
+	self.NotificationTypes = LibStatic.PAIREDLIST:New(
+		{"Chat", "Center Screen", "Alert"},
+		{1, 2, 3}
+	)
 
-  self.NotificationSizes = LibStatic.PAIREDLIST:New({"Small", "Medium", "Large"}, {CSA_CATEGORY_SMALL_TEXT, CSA_CATEGORY_MAJOR_TEXT, CSA_CATEGORY_LARGE_TEXT})
+  self.NotificationSizes = LibStatic.PAIREDLIST:New(
+		{"Small", "Medium", "Large"},
+		{CSA_CATEGORY_SMALL_TEXT, CSA_CATEGORY_MAJOR_TEXT, CSA_CATEGORY_LARGE_TEXT}
+	)
 
-	self.NotificationSounds = LibStatic.PAIREDLIST:New({"None", "Book", "Default", "Map Open", "Error"}, {SOUNDS.NONE, SOUNDS.BOOK_ACQUIRED, SOUNDS.DEFAULT_CLICK, SOUNDS.MAP_WINDOW_OPEN, SOUNDS.GENERAL_ALERT_ERROR})
+	self.NotificationSounds = LibStatic.PAIREDLIST:New(
+		{"None", "Book", "Default", "Map Open", "Error", "New Notification"},
+		{SOUNDS.NONE, SOUNDS.BOOK_ACQUIRED, SOUNDS.DEFAULT_CLICK, SOUNDS.MAP_WINDOW_OPEN, SOUNDS.GENERAL_ALERT_ERROR, SOUNDS.NEW_NOTIFICATION}
+	)
 
 	self.IconTextures = {
 		"/esoui/art/compass/target_gold_star.dds",					-- Gold Star

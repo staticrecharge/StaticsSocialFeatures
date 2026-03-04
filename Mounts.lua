@@ -112,7 +112,7 @@ function Mounts:MountPlayer()
 		if not ZO_ShouldPreferUserId() then displayNamePref = playerCharName else displayNamePref = playerDisplayName end
 		displayNamePref = zo_strformat("<<1>>", displayNamePref)--<< Strip genders
 		if playerDisplayName ~= GetUnitDisplayName("player") and IsUnitOnline(playerID) and IsUnitInGroupSupportRange(playerID) and isMountable and distance < 5.0 then
-			table.insert(GroupMultiMounts, {name = playerDisplayName, distance = distance})
+			table.insert(GroupMultiMounts, {name = displayNamePref, distance = distance})
 		end
 	end
 	if #GroupMultiMounts > 0 then
@@ -120,12 +120,15 @@ function Mounts:MountPlayer()
 		--dismount
 		EnablePreviewMode(true)
 		DisablePreviewMode()
-		UseMountAsPassenger(GroupMultiMounts[1].name)
+		local name = GroupMultiMounts[1].name
+		UseMountAsPassenger(name)
 		if Parent.SV.multiMountNotify then
-			Parent.Notifications:Notify(zo_strformat("Mounted <<1>> as a passenger.", displayNamePref))
+			Parent.Notifications:Notify(zo_strformat("Mounted <<1>> as a passenger.", name))
 		end
 	else
-		Parent.Notifications:Notify(zo_strformat("No multi-mount within range."))
+		if Parent.SV.multiMountNotify then
+			Parent.Notifications:Notify(zo_strformat("No multi-mount within range."))
+		end
 	end
 end
 
