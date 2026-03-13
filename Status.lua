@@ -25,7 +25,7 @@ Status    													              - Parent object containing all functions, t
 │                                     						- Fired when there is a chat message. Checking for outgoing whispers and notifying if needed.
 └─ :GetParent()                                   - Returns the parent object of this object for reference to parent variables.
 ------------------------------------------------------------------------------------------------]]--
-local Status = ZO_InitializingObject:Subclass()
+local Status = {}
 
 
 --[[------------------------------------------------------------------------------------------------
@@ -163,7 +163,7 @@ end
 
 
 --[[------------------------------------------------------------------------------------------------
-function Status:OnPlayerActivated(eventCode, initial)
+Status:OnPlayerActivated(eventCode, initial)
 Inputs:				eventCode				- Internal ZOS event code, not used here.
 							initial					- Indicates if this is the first activation from log-in.
 Outputs:			None
@@ -196,7 +196,7 @@ end
 
 
 --[[------------------------------------------------------------------------------------------------
-function Status:OnEventChatMessageChannel(eventCode, channelType, fromName, text, isCustomerService, fromDisplayName)
+Status:OnEventChatMessageChannel(eventCode, channelType, fromName, text, isCustomerService, fromDisplayName)
 Inputs:				eventCode				- Internal ZOS event code, not used here.
 							channelType			- Global Constant channelType (using CHAT_CHANNEL_WHISPER_SENT)
 							fromName  			- Character name of the sender
@@ -231,4 +231,4 @@ end
 --[[------------------------------------------------------------------------------------------------
 Global template assignment
 ------------------------------------------------------------------------------------------------]]--
-StaticsSocialFeatures.STATUS = Status
+StaticsSocialFeatures.Status = Status

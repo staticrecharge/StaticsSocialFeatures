@@ -14,6 +14,12 @@ local CDM = ZO_COLLECTIBLE_DATA_MANAGER
 
 
 --[[------------------------------------------------------------------------------------------------
+Static Values
+------------------------------------------------------------------------------------------------]]--
+local multiRiderSubCatID = 75
+
+
+--[[------------------------------------------------------------------------------------------------
 Mounts Class Initialization
 Mounts    													              - Parent object containing all functions, tables, variables, constants and other data managers.
 ├─ :IsInitialized()                               - Returns true if the object has been successfully initialized.
@@ -28,7 +34,7 @@ Mounts    													              - Parent object containing all functions, t
 ├─ :MountContextMenu()														- Adds an entry to the Mount list context menu.
 └─ :GetParent()                                   - Returns the parent object of this object for reference to parent variables.
 ------------------------------------------------------------------------------------------------]]--
-local Mounts = ZO_InitializingObject:Subclass()
+local Mounts = {}
 
 
 --[[------------------------------------------------------------------------------------------------
@@ -63,7 +69,7 @@ function Mounts:Initialize(Parent)
 	EM:RegisterForEvent(self.eventSpace, EVENT_PLAYER_ACTIVATED, function(...) self:OnPlayerActivated(...) end)
 
   -- Keybindings associations
-	ZO_CreateStringId("SI_BINDING_NAME_MOUNT_PLAYER", "Mount Group Member")
+	ZO_CreateStringId("SI_BINDING_NAME_SSF_MOUNT_PLAYER", "Mount Group Member")
 
 	self.initialized = true
 end
@@ -81,7 +87,7 @@ end
 
 
 --[[------------------------------------------------------------------------------------------------
-function Mounts:MountPlayer()
+Mounts:MountPlayer()
 Inputs:				None
 Outputs:			None
 Description:	Mounts the targetted player
@@ -134,7 +140,7 @@ end
 
 
 --[[------------------------------------------------------------------------------------------------
-function Mounts:UpdateMountData()
+Mounts:UpdateMountData()
 Inputs:				None
 Outputs:			None
 Description:	Updates the mount lists.
@@ -170,7 +176,7 @@ function Mounts:UpdateMountData()
 							name = name,
 						}
 					end
-					if subCategoryData:GetId() == Parent.multiRiderSubCatID then
+					if subCategoryData:GetId() == multiRiderSubCatID then
 						table.insert(MultiMountCollectionData.id, id)
 						table.insert(MultiMountCollectionData.name, name)
 					else
@@ -189,15 +195,15 @@ function Mounts:UpdateMountData()
 	table.insert(SoloMountCollectionData.name, 2, "-- Random Mount")
 
 	-- convert to paired lists and sort
-	self.MultiMount = LibStatic.PAIREDLIST:New(MultiMountCollectionData.name, MultiMountCollectionData.id)
-	self.SoloMount = LibStatic.PAIREDLIST:New(SoloMountCollectionData.name, SoloMountCollectionData.id)
+	self.MultiMount = LibStatic:PairedListNew(MultiMountCollectionData.name, MultiMountCollectionData.id)
+	self.SoloMount = LibStatic:PairedListNew(SoloMountCollectionData.name, SoloMountCollectionData.id)
 	self.MultiMount:Sort()
 	self.SoloMount:Sort()
 end
 
 
 --[[------------------------------------------------------------------------------------------------
-function Mounts:OnGroupMemberJoined(eventCode, memberCharacterName, memberDisplayName, isLocalPlayer)
+Mounts:OnGroupMemberJoined(eventCode, memberCharacterName, memberDisplayName, isLocalPlayer)
 Inputs:				eventCode 													- ZOS eventcode
 							memberCharacterName 								- Character name of who joined
 							memberDisplayName 									- Display name of who joined
@@ -215,7 +221,7 @@ end
 
 
 --[[------------------------------------------------------------------------------------------------
-function Mounts:OnGroupMemberLeft(eventCode, memberCharacterName, reason, isLocalPlayer, isLeader, memberDisplayName, actionRequiredVote)
+Mounts:OnGroupMemberLeft(eventCode, memberCharacterName, reason, isLocalPlayer, isLeader, memberDisplayName, actionRequiredVote)
 Inputs:				eventCode 													- ZOS eventcode
 							memberCharacterName 								- Character name of who left
 							reason 															- Reason code for the leave
@@ -240,7 +246,7 @@ end
 
 
 --[[------------------------------------------------------------------------------------------------
-function Mounts:OnPlayerActivated(eventCode, initial)
+Mounts:OnPlayerActivated(eventCode, initial)
 Inputs:				eventCode 													- ZOS eventcode
 							initial 														- true if this is the initial load
 Outputs:			None
@@ -262,7 +268,7 @@ end
 
 
 --[[------------------------------------------------------------------------------------------------
-function SSF:MountContextMenu()
+SSF:MountContextMenu()
 Inputs:			  None
 Outputs:			None
 Description:	Adds an entry to the Mount list context menu.
@@ -319,4 +325,4 @@ end
 --[[------------------------------------------------------------------------------------------------
 Global template assignment
 ------------------------------------------------------------------------------------------------]]--
-StaticsSocialFeatures.MOUNTS = Mounts
+StaticsSocialFeatures.Mounts = Mounts

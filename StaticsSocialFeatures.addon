@@ -1,9 +1,9 @@
 ## Title: |cFF6600Static's Social Features|r
 ## Author: |CFF0000Static_Recharge|r
-## Version: 1.2.3
-## AddOnVersion: 1
-## APIVersion: 101048
-## DependsOn: LibAddonMenu-2.0>=41 LibCustomMenu>=730 LibStatic>=1
+## Version: 2.0.0
+## AddOnVersion: 2
+## APIVersion: 101049
+## DependsOn: LibAddonMenu-2.0>=41 LibCustomMenu>=730 LibStatic>=2
 ## SavedVariables: StaticsSocialFeaturesAccountWideVars StaticsSocialFeaturesCharVars
 ## DisableSavedVariablesAutoSaving: 1
 ## Description: Adds specific social features, fav friends, etc.

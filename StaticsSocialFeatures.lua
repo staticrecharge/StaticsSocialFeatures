@@ -1,7 +1,7 @@
 --[[------------------------------------------------------------------------------------------------
 Title:					Static's Social Features
 Author:					Static_Recharge
-Version:				1.2.3
+Version:				2.0.0
 Description:		Adds specific social featues.
 ------------------------------------------------------------------------------------------------]]--
 
@@ -21,6 +21,8 @@ StaticsSocialFeatures    													- Parent object containing all functions, 
 ├─ :LogoutQuitHook()															- Hooks into the logout and quit function to set character status if needed before actually logging out.
 ├─ :FriendMessageHook()                						- Hooks into the friends message to allow only showing for fav friends.
 ├─ :GetCharacterIndex()                						- Returns the index of the curent character from the saved vars table.
+├─ :OnPlayerActivated(initial) 										- Fires once after load or reload. Performs various on load functions.
+├─ :UpdateGuildList() 														- Updates the internal guild list data.
 └─ :Test(...)                                     - For internal add-on testing only.
 ------------------------------------------------------------------------------------------------]]--
 StaticsSocialFeatures = {}
@@ -30,41 +32,43 @@ StaticsSocialFeatures = {}
 StaticsSocialFeatures:Initialize()
 Inputs:				None
 Outputs:			None
-Description:	Initializes all of the variables, object managers, slash commands and main event
-							callbacks.
+Description:	Initializes all of the variables, modules, slash commands, keybinds and main events.
 ------------------------------------------------------------------------------------------------]]--
 function StaticsSocialFeatures:Initialize()
 	-- Static definitions
 	self.addonName = "StaticsSocialFeatures"
-	self.addonVersion = "1.2.3"
+	self.addonVersion = "2.0.0"
 	self.varsVersion = 2 -- SHOULD BE 2
 	self.charVarsVersion = 1
 	self.author = "|CFF0000Static_Recharge|r"
 
-	self.PlayerStatus = LibStatic.PAIREDLIST:New(
+	-- Paired Lists
+	self.PlayerStatus = LibStatic:PairedListNew(
 		{"Disabled", "Online", "Away", "Do Not Disturb", "Offline"},
 		{5, PLAYER_STATUS_ONLINE, PLAYER_STATUS_AWAY, PLAYER_STATUS_DO_NOT_DISTURB, PLAYER_STATUS_OFFLINE}
 	)
 
-	self.AllFavNone = LibStatic.PAIREDLIST:New(
+	self.AllFavNone = LibStatic:PairedListNew(
 		{"All", "Fav", "None"},
 		{1, 2, 3}
 	)
 
-	self.NotificationTypes = LibStatic.PAIREDLIST:New(
+	self.NotificationTypes = LibStatic:PairedListNew(
 		{"Chat", "Center Screen", "Alert"},
 		{1, 2, 3}
 	)
 
-  self.NotificationSizes = LibStatic.PAIREDLIST:New(
+  self.NotificationSizes = LibStatic:PairedListNew(
 		{"Small", "Medium", "Large"},
 		{CSA_CATEGORY_SMALL_TEXT, CSA_CATEGORY_MAJOR_TEXT, CSA_CATEGORY_LARGE_TEXT}
 	)
 
-	self.NotificationSounds = LibStatic.PAIREDLIST:New(
+	self.NotificationSounds = LibStatic:PairedListNew(
 		{"None", "Book", "Default", "Map Open", "Error", "New Notification"},
 		{SOUNDS.NONE, SOUNDS.BOOK_ACQUIRED, SOUNDS.DEFAULT_CLICK, SOUNDS.MAP_WINDOW_OPEN, SOUNDS.GENERAL_ALERT_ERROR, SOUNDS.NEW_NOTIFICATION}
 	)
+
+	self:UpdateGuildList()
 
 	self.IconTextures = {
 		"/esoui/art/compass/target_gold_star.dds",					-- Gold Star
@@ -84,11 +88,16 @@ function StaticsSocialFeatures:Initialize()
 		"/esoui/art/buttons/featuredot_active.dds",					-- Feature Dot
 	}
 
-	self.multiRiderSubCatID = 75
-
 	self.Defaults = {
-		chatEnabled = true,
-		debugEnabled = false,
+		-- Friends List
+		favFriendsTop = true,
+		sharedGuilds = self.AllFavNone.All,
+		sharedGuildsGroup = true,
+		favIconSize = 90, -- %
+		favIconInheritColor = false,
+		favIconTexture = self.IconTextures[1],
+
+		-- Status
 		charOverride = self.PlayerStatus.Disabled,
 		charOverrideLogin = false,
 		charOverrideLogout = false,
@@ -97,17 +106,9 @@ function StaticsSocialFeatures:Initialize()
 		accountOverrideLogout = false,
 		accountOverrideEnabled = true,
 		afkTimerEnabled = true,
-		afkTimeout = 600, -- s
-		Characters = {},
-		Favs = {},
-		friendMsg = self.AllFavNone.All,
-		friendMsgChat = true,
-		favFriendsTop = true,
-		sharedGuilds = self.AllFavNone.All,
-		favIconSize = 90, -- %
-		favIconInheritColor = false,
-		favIconTexture = self.IconTextures[1],
-		settingsChanged = true,
+		afkTimeout = 600, -- seconds
+
+		-- Notifications
 		offlineNotice = true,
 		groupInvite = self.AllFavNone.All,
 		whisperNotice = true,
@@ -116,27 +117,50 @@ function StaticsSocialFeatures:Initialize()
 		notificationSound = self.NotificationSounds["Book Acquired"],
 		afkNotice = true,
 		offlineTimerEnabled = false,
-		offlineTimeout = 10, -- m
+		offlineTimeout = 10, -- minutes
 		offlineTimerNotice = true,
 		offlineTimerEnd = nil,
-		sharedGuildsGroup = true,
+		multiMountNotify = true,
+		friendMsg = self.AllFavNone.All,
+		friendMsgChat = true,
+
+		-- Repped Guild
+		reppedGuildAccountSelection = 0,
+
+		-- Lists and Tables
+		Characters = {},
+		Favs = {},
 		Friends = {},
 		Ignored = {},
-		multiMountNotify = true,
+
+		-- Misc.
+		chatEnabled = true,
+		debugEnabled = false,
+		settingsChanged = true,
 	}
+
 	self.CharDefaults = {
+		-- Multi Mount
 		multiMountEnable = false,
 		multiMount = nil,
 		soloMount = nil,
+
+		-- Repped Guild
+		reppedGuildAccountEnabled = false,
+		reppedGuildMarqueeEnabled = false,
+		reppedGuildMarqueeInterval = 5, -- minutes
+		reppedGuildMarqueeSelections = {},
 	}
 
 	-- Session variables
 	self.chatRouterEventRedirected = false
+	self.marqueeIndex = 1
+	self.marqueeRunning = false
 	
 
 	-- Saved variables initialization
-	self.SV = ZO_SavedVars:NewAccountWide("StaticsSocialFeaturesAccountWideVars", self.varsVersion, nil, self.Defaults, nil)
-	self.CH = ZO_SavedVars:NewCharacterIdSettings("StaticsSocialFeaturesCharVars", self.charVarsVersion, nil, self.CharDefaults, nil)
+	self.SV = ZO_SavedVars:NewAccountWide("StaticsSocialFeaturesAccountWideVars", self.varsVersion, nil, self.Defaults, GetWorldName())
+	self.CH = ZO_SavedVars:NewCharacterIdSettings("StaticsSocialFeaturesCharVars", self.charVarsVersion, nil, self.CharDefaults, GetWorldName())
 	--RequestAddOnSavedVariablesPrioritySave(self.addonName)
 
 	-- Update Character list (preserve any settings)
@@ -171,20 +195,21 @@ function StaticsSocialFeatures:Initialize()
 		chatEnabled = self.SV.chatEnabled,
 		debugEnabled = self.SV.debugEnabled,
 	}
-	self.Chat = LibStatic.CHAT:New(Options)
+	self.Chat = LibStatic:ChatNew(Options)
 
-	-- Child Initializations
-	self.Status = self.STATUS:New(self)
-	self.Notifications = self.NOTIFICATIONS:New(self)
-	self.Lists = self.LISTS:New(self)
-	self.Mounts = self.MOUNTS:New(self)
-	self.Settings = self.SETTINGS:New(self)
+	-- Module Initializations
+	self.Status:Initialize(self)
+	self.Notifications:Initialize(self)
+	self.Lists:Initialize(self)
+	self.Mounts:Initialize(self)
+	self.Settings:Initialize(self)
 
-	-- ZO Hooks
+	-- Hooks and Events
 	self:LogoutQuitHook()
 	self:FriendMessageHook()
+	EM:RegisterForEvent(self.addonName, EVENT_PLAYER_ACTIVATED, function(_, ...) self:OnPlayerActivated(...) end)
 
-	-- Slash commands declarations
+	-- Slash Commands
 	--SLASH_COMMANDS["/ssftest"] = function(...) self:Test(...) end
 
 	self.initialized = true
@@ -203,7 +228,7 @@ end
 
 
 --[[------------------------------------------------------------------------------------------------
-function StaticsSocialFeatures:LogoutQuitHook()
+StaticsSocialFeatures:LogoutQuitHook()
 Inputs:			  None
 Outputs:			None
 Description:	Hooks into the logout and quit function to set character status if needed before actually logging out.
@@ -228,7 +253,7 @@ end
 
 
 --[[------------------------------------------------------------------------------------------------
-function StaticsSocialFeatures:FriendMessageHook()
+StaticsSocialFeatures:FriendMessageHook()
 Inputs:			  None
 Outputs:			None
 Description:	Hooks into the friends message to allow only showing for fav friends.
@@ -263,7 +288,7 @@ end
 
 
 --[[------------------------------------------------------------------------------------------------
-function StaticsSocialFeatures:GetCharacterIndex()
+StaticsSocialFeatures:GetCharacterIndex()
 Inputs:			  None
 Outputs:			index 					- The index of the character
 Description:	Returns the index of the curent character from the saved vars table.
@@ -282,7 +307,88 @@ end
 
 
 --[[------------------------------------------------------------------------------------------------
-function StaticsSocialFeatures:Test(...)
+StaticsSocialFeatures:OnPlayerActiviated()
+Inputs:			  initial 														- (bool) true if first load after login
+Outputs:			None
+Description:	Fires once after load or reload. Performs various on load functions.
+------------------------------------------------------------------------------------------------]]--
+function StaticsSocialFeatures:OnPlayerActivated(initial)
+	-- Repped Guild Update
+	self:ReppedGuildAccountWideUpdate()
+	self:MarqueeUpdate()
+
+	EM:UnregisterForEvent(self.addonName, EVENT_PLAYER_ACTIVATED)
+end
+
+
+--[[------------------------------------------------------------------------------------------------
+StaticsSocialFeatures:ReppedGuildAccountWideUpdate()
+Inputs:			  None
+Outputs:			None
+Description:	Updates the repped guild based on account wide setting.
+------------------------------------------------------------------------------------------------]]--
+function StaticsSocialFeatures:ReppedGuildAccountWideUpdate()
+	local enabled, marquee = self.CH.reppedGuildAccountEnabled, self.CH.reppedGuildMarqueeEnabled
+	local selection = self.SV.reppedGuildAccountSelection
+	if enabled and not marquee then
+		SetRepresentedGuildId(selection)
+	end
+end
+
+
+--[[------------------------------------------------------------------------------------------------
+StaticsSocialFeatures:UpdateGuildList()
+Inputs:			  None
+Outputs:			None
+Description:	Updates the internal guild paired list.
+------------------------------------------------------------------------------------------------]]--
+function StaticsSocialFeatures:UpdateGuildList()
+	local guildIds = {0}
+	local guildNames = {"None"}
+	for i=1, GetNumGuilds() do
+		local id = GetGuildId(i)
+		table.insert(guildNames, GetGuildName(id))
+		table.insert(guildIds, id)
+	end
+
+	if not self.Guilds then
+		self.Guilds = LibStatic:PairedListNew(guildNames, guildIds)
+	else
+		self.Guilds:UpdateData(guildNames, guildIds)
+	end
+end
+
+
+--[[------------------------------------------------------------------------------------------------
+StaticsSocialFeatures:MarqueeUpdate()
+Inputs:			  None
+Outputs:			None
+Description:	Updates the repped guild marquee system. Turns off if not needed.
+------------------------------------------------------------------------------------------------]]--
+function StaticsSocialFeatures:MarqueeUpdate()
+	local function SetNextMarqueeGuild()
+		local min, max = 1, #self.CH.reppedGuildMarqueeSelections
+		self.marqueeIndex = self.marqueeIndex + 1
+		if self.marqueeIndex > max then self.marqueeIndex = min end
+		SetRepresentedGuildId(self.CH.reppedGuildMarqueeSelections[self.marqueeIndex])
+	end
+
+	if self.CH.reppedGuildMarqueeEnabled and #self.CH.reppedGuildMarqueeSelections >= 2 then
+		if self.marqueeRunning then
+			EM:UnregisterForUpdate(self.addonName)
+		end
+		self.marqueeIndex = 1
+		EM:RegisterForUpdate(self.addonName, self.CH.reppedGuildMarqueeInterval * 60 * 1000, SetNextMarqueeGuild)
+		self.marqueeRunning = true
+	else
+		EM:UnregisterForUpdate(self.addonName)
+		self.marqueeRunning = false
+	end
+end
+
+
+--[[------------------------------------------------------------------------------------------------
+StaticsSocialFeatures:Test(...)
 Inputs:				...							- Various test inputs.
 Outputs:			None
 Description:	For internal add-on testing only.

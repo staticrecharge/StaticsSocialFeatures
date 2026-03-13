@@ -18,7 +18,7 @@ Notifications    										              - Parent object containing all function
 ├─ :Notify(message)															  - Updates the notification settings.
 └─ :GetParent()                                   - Returns the parent object of this object for reference to parent variables.
 ------------------------------------------------------------------------------------------------]]--
-local Notifications = ZO_InitializingObject:Subclass()
+local Notifications = {}
 
 
 --[[------------------------------------------------------------------------------------------------
@@ -89,4 +89,4 @@ end
 --[[------------------------------------------------------------------------------------------------
 Global template assignment
 ------------------------------------------------------------------------------------------------]]--
-StaticsSocialFeatures.NOTIFICATIONS = Notifications
+StaticsSocialFeatures.Notifications = Notifications

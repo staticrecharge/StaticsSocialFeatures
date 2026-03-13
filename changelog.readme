@@ -1,3 +1,11 @@
+2.0.0
+  - Fixed bug with mutual guilds showing for the user
+  - Upped requirement for LibStatic to version 2
+  - Added account wide repped guild option
+  - Fixed Saved Variables to differenciate between servers
+  - Added repped guild marquee feature
+  - Updated to 49
+
 1.2.3
   - Added support for LibStatic
   - Added check for if in group on login for multirider mount setting

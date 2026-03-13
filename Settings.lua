@@ -24,7 +24,7 @@ Settings    													            - Parent object containing all functions, t
 ├─ :Changed()               							- Fired when the player first loads in after a settings reset is forced.
 └─ :GetParent()                                   - Returns the parent object of this object for reference to parent variables.
 ------------------------------------------------------------------------------------------------]]--
-local Settings = ZO_InitializingObject:Subclass()
+local Settings = {}
 
 
 --[[------------------------------------------------------------------------------------------------
@@ -565,6 +565,86 @@ function Settings:CreateSettingsPanel()
 		disabled = function() return not Parent.CH.multiMountEnable end,
 		reference = "SSF_MultiMountDropdown_LAM",
 	}
+
+	i = i + 1
+  optionsData[i] = {
+		type = "header",
+		name = "Repped Guild",
+	}
+
+	i = i + 1
+	optionsData[i] = {
+		type = "checkbox",
+    name = "Use Account Wide Repped Guild",
+    getFunc = function() return Parent.CH.reppedGuildAccountEnabled end,
+    setFunc = function(value) Parent.CH.reppedGuildAccountEnabled = value Parent:ReppedGuildAccountWideUpdate() end,
+    width = "full",
+		tooltip = "When enabled, this character's repped guild will be set to the selected account wide repped guild.",
+		default = Parent.CharDefaults.reppedGuildAccountEnabled,
+	}
+
+	i = i + 1
+	optionsData[i] = {
+		type = "dropdown",
+		name = "Account Wide Repped Guild",
+		choices = Parent.Guilds:GetChoices(),
+		choicesValues = Parent.Guilds:GetValues(),
+		getFunc = function() return Parent.SV.reppedGuildAccountSelection end,
+		setFunc = function(var) Parent.SV.reppedGuildAccountSelection = var Parent:ReppedGuildAccountWideUpdate() end,
+		width = "full",
+		scrollable = false,
+		default = Parent.Defaults.reppedGuildAccountSelection,
+		multiSelect = false,
+		requiresReload = false,
+		reference = "SSF_ReppedGuildAccountWideDropdown_LAM",
+	}
+
+	i = i + 1
+	optionsData[i] = {
+		type = "checkbox",
+    name = "Marquee Enabled",
+    getFunc = function() return Parent.CH.reppedGuildMarqueeEnabled end,
+    setFunc = function(value) Parent.CH.reppedGuildMarqueeEnabled = value Parent:MarqueeUpdate() end,
+    width = "full",
+		tooltip = "The marquee rotates through the selected repped guilds on a timer. This setting overrides the Account Wide Repped Guild setting and is character specific.",
+		default = Parent.CharDefaults.reppedGuildMarqueeEnabled,
+	}
+
+	i = i + 1
+	optionsData[i] = {
+		type = "slider",
+		name = "Marquee Interval (m)",
+		getFunc = function() return Parent.CH.reppedGuildMarqueeInterval end,
+		setFunc = function(value) Parent.CH.reppedGuildMarqueeInterval = value Parent:MarqueeUpdate() end,
+		tooltip = "How long before the repped guild will be changed to the next selection in minutes.",
+		min = 0.5,
+		max = 15,
+		step = 0.5,
+		clampInput = true,
+		decimals = 1,
+		autoSelect = true,
+		readOnly = false,
+		width = "full",
+		disabled = function() return not Parent.CH.reppedGuildMarqueeEnabled end,
+		default = Parent.CharDefaults.reppedGuildMarqueeInterval,
+	}
+
+	i = i + 1
+	optionsData[i] = {
+    type = "dropdown",
+    name = "Marquee Guilds",
+    choices = Parent.Guilds:GetChoices(),
+    --choicesValues = Parent.Guilds:GetValues(),
+    getFunc = function() return Parent.Guilds:GetSelectedChoicesByValues(Parent.CH.reppedGuildMarqueeSelections) end,
+    setFunc = function(var) Parent.CH.reppedGuildMarqueeSelections = Parent.Guilds:GetSelectedValuesByChoices(var) Parent:MarqueeUpdate() end,
+		tooltip = "Must select at least two options for the marquee to work.",
+    width = "full", -- or "half" (optional)
+    scrollable = false,
+    disabled = function() return not Parent.CH.reppedGuildMarqueeEnabled end,
+    default = Parent.CharDefaults.reppedGuildMarqueeSelections,
+    reference = "SSF_ReppedGuildMarqueeDropdown_LAM",
+    multiSelect = true,
+	}
 	
 	i = i + 1
   optionsData[i] = {
@@ -600,6 +680,8 @@ function Settings:CreateSettingsPanel()
 		Parent.Controls = {
 			SoloMDD = WM:GetControlByName("SSF_SoloMountDropdown_LAM"),
 			MultiMDD = WM:GetControlByName("SSF_MultiMountDropdown_LAM"),
+			RepGuildDD = WM:GetControlByName("SSF_ReppedGuildAccountWideDropdown_LAM"),
+			MarqueeDD = WM:GetControlByName("SSF_ReppedGuildMarqueeDropdown_LAM"),
 		}
 		Parent.LAMReady = true
 	end
@@ -627,19 +709,26 @@ function Settings:Update()
 	local Parent = self:GetParent()
 	if not Parent.LAMReady then return end
 
-	local M = Parent.Mounts
-	M:UpdateMountData()
-
 	local C = Parent.Controls
+	local M = Parent.Mounts
+	local G = Parent.Guilds
+
+	M:UpdateMountData()
 	C.SoloMDD:UpdateChoices(M.SoloMount:GetChoices(), M.SoloMount:GetValues())
 	C.SoloMDD:UpdateValue()
 	C.MultiMDD:UpdateChoices(M.MultiMount:GetChoices(), M.MultiMount:GetValues())
 	C.MultiMDD:UpdateValue()
+
+	Parent:UpdateGuildList()
+	C.RepGuildDD:UpdateChoices(G:GetChoices(), G:GetValues())
+	C.RepGuildDD:UpdateValue()
+	C.MarqueeDD:UpdateChoices(G:GetChoices(), G:GetValues())
+	C.MarqueeDD:UpdateValue()
 end
 
 
 --[[------------------------------------------------------------------------------------------------
-function Settings:Changed()
+Settings:Changed()
 Inputs:				None
 Outputs:			None
 Description:	Fired when the player first loads in after a settings reset is forced.
@@ -647,7 +736,7 @@ Description:	Fired when the player first loads in after a settings reset is forc
 function Settings:Changed()
 	local Parent = self:GetParent()
 	if Parent.SV.settingsChanged then 
-		Parent:Chat(zo_strformat("Static's Social Features updated to <<1>>. Settings have been reset.", Parent.addonVersion))
+		Parent.Chat:Msg(zo_strformat("Static's Social Features updated to <<1>>. Settings have been reset.", Parent.addonVersion))
 		Parent.SV.settingsChanged = false
 	end
 	EM:UnregisterForEvent(self.eventSpace, EVENT_PLAYER_ACTIVATED)
@@ -668,4 +757,4 @@ end
 --[[------------------------------------------------------------------------------------------------
 Global template assignment
 ------------------------------------------------------------------------------------------------]]--
-StaticsSocialFeatures.SETTINGS = Settings
+StaticsSocialFeatures.Settings = Settings

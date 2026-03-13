@@ -27,7 +27,7 @@ Lists Class Initialization
 Status    - Object containing all functions, tables, variables,and constants.
   |-  Parent    - Reference to parent object.
 ------------------------------------------------------------------------------------------------]]--
-local Lists = ZO_InitializingObject:Subclass()
+local Lists = {}
 
 
 --[[------------------------------------------------------------------------------------------------
@@ -74,7 +74,7 @@ end
 
 
 --[[------------------------------------------------------------------------------------------------
-function Lists:UpdateFavIcon()
+Lists:UpdateFavIcon()
 Inputs:			  None
 Outputs:			None
 Description:	Updates the display of the fav icon.
@@ -93,7 +93,7 @@ end
 
 
 --[[------------------------------------------------------------------------------------------------
-function Lists:FriendListHook()
+Lists:FriendListHook()
 Inputs:			  None
 Outputs:			None
 Description:	Hooks into the friends list manager to add Fav tag to all entries as required.
@@ -114,7 +114,7 @@ end
 
 
 --[[------------------------------------------------------------------------------------------------
-function Lists:FriendEntryHook()
+Lists:FriendEntryHook()
 Inputs:			  None
 Outputs:			None
 Description:	Hooks into the friends list manager to add the icon for Fav friends.
@@ -134,7 +134,7 @@ end
 
 
 --[[------------------------------------------------------------------------------------------------
-function Lists:FriendListSortHook()
+Lists:FriendListSortHook()
 Inputs:			  None
 Outputs:			None
 Description:	Hooks into the friends list to sort Fav friends to the top.
@@ -173,7 +173,7 @@ end
 
 
 --[[------------------------------------------------------------------------------------------------
-function Lists:FriendKeybindStripHook()
+Lists:FriendKeybindStripHook()
 Inputs:			  None
 Outputs:			None
 Description:	Hooks into the friends keybind strip to add the invite and whisper option for offline 
@@ -182,7 +182,7 @@ Description:	Hooks into the friends keybind strip to add the invite and whisper 
 function Lists:FriendKeybindStripHook()
   local Parent = self:GetParent()
 	ZO_PostHook(FL, 'InitializeKeybindDescriptors', function(self_)
-		Parent.Chat:Debug("Friend Keybind Strip prehook started.")
+		Parent.Chat:Debug("Friend Keybind Strip posthook started.")
 		-- Group Invite
 		self_.keybindStripDescriptor[2].visible = function()
 			if IsGroupModificationAvailable() and self_.mouseOverRow then
@@ -228,7 +228,7 @@ end
 
 
 --[[------------------------------------------------------------------------------------------------
-function Lists:FriendListTooltipHook()
+Lists:FriendListTooltipHook()
 Inputs:			  None
 Outputs:			None
 Description:	Hooks into the friends list to add mutual guilds to the tooltips.
@@ -244,14 +244,14 @@ function Lists:FriendListTooltipHook()
 		for i=1, GetNumGuilds() do
 			for j=1, GetGuildInfo(GetGuildId(i)) do
 				local name = GetGuildMemberInfo(GetGuildId(i),j)
-				if name == data.displayName then
+				if name == data.displayName and name ~= GetDisplayName() then
 					table.insert(guilds, GetGuildName(GetGuildId(i)))
 					break
 				end
 			end
 		end
 		guilds = table.concat(guilds, "\n")
-		if data and data.hasCharacter and guilds ~= "" and (Parent.SV.sharedGuilds == Parent.AllFavNone.All or (Parent.SV.sharedGuilds == Parent.AllFavNone.Fav and  Parent.SV.Favs[data.displayName]))then
+		if data and data.hasCharacter and guilds ~= "" and (Parent.SV.sharedGuilds == Parent.AllFavNone.All or (Parent.SV.sharedGuilds == Parent.AllFavNone.Fav and  Parent.SV.Favs[data.displayName])) then
 			SetTooltipText(InformationTooltip, guilds)
 		end
 	end)
@@ -259,7 +259,7 @@ end
 
 
 --[[------------------------------------------------------------------------------------------------
-function Lists:GroupListTooltipHook()
+Lists:GroupListTooltipHook()
 Inputs:			  None
 Outputs:			None
 Description:	Hooks into the group list to sort Fav friends to the top.
@@ -290,7 +290,7 @@ end
 
 
 --[[------------------------------------------------------------------------------------------------
-function Lists:FriendListContextMenu()
+Lists:FriendListContextMenu()
 Inputs:			  None
 Outputs:			None
 Description:	Adds an entry to the friends list context menu.
@@ -317,7 +317,7 @@ end
 
 
 --[[------------------------------------------------------------------------------------------------
-function Lists:AddFavFriend(name)
+Lists:AddFavFriend(name)
 Inputs:			  name 						- The @name to add to the fav friends list
 Outputs:			None
 Description:	Adds the name to the Fav list.
@@ -332,7 +332,7 @@ end
 
 
 --[[------------------------------------------------------------------------------------------------
-function Lists:RemoveFavFriend(name)
+Lists:RemoveFavFriend(name)
 Inputs:			  name 						- The @name to remove from the fav friends list
 Outputs:			None
 Description:	Removes the name from the Fav list.
@@ -467,4 +467,4 @@ end
 --[[------------------------------------------------------------------------------------------------
 Global template assignment
 ------------------------------------------------------------------------------------------------]]--
-StaticsSocialFeatures.LISTS = Lists
+StaticsSocialFeatures.Lists = Lists
